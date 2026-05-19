@@ -10,10 +10,10 @@ import torch
 from torch import Tensor
 
 
-def train(network: Network , input: list[Tensor], gold: list[Tensor], features: list[Tensor]):
+def train(network: Network , input: list[Tensor], gold: list[Tensor], features: list[list[Tensor]]):
 	'''
 	takes in the network, the input audio data and the targets, optimizes the model that best represents this target over the input data.
-	input shape: ( n, 10,000), where n is the number of syllables  for each sample
+	input shape: ( n, 30,000), where n is the number of syllables  for each sample
 			: (n, 2)
 	output shape: none
 	
@@ -27,21 +27,50 @@ def train(network: Network , input: list[Tensor], gold: list[Tensor], features: 
 		n = torch.randint(0, N, 20)
 		for i in n:
 			x, y = input[i], gold[i]
-			y_hat = network.forward(x)
+			f = filter(features, i)
+			y_hat = network.forward(x, f)
 			error += compute_loss(y_hat, y)
 		error.backward()
 		optim.step()
 		epoch -= 1
+	network.cycles +=1
+	state_dict = network.state_dict(keep_vars = True)
+	for key, value in state_dict.items():
+		state_dict[key] = value.tolist()
+	path = Path('model.json')
+	path.touch()
+	json.dump(state_dict, path.open(mode='w'))
+	
+def filter(features:list[list[Tensor]], i: int):
+	'''
+	returns the ith tensor of each list in features
+	'''
+	f = []
+	for feature in features:
+		f.append(feature[i])
+	return f
 		
 def compute_loss(y_hat: Tensor, y: Tensor)
 	'''
 	measures the distance of the prediction y hat to y and returns the result.
 	y_hat shape: (n, 2)
-	y shape: (n, 2)
+	y shape: (n)
 	'''
+	binary_list = []
+	for n in y:
+		binary_list.append(binarize(n, 2))
+	y = torch.Tensor(binary_list)
 	distance = torch.add(y, y_hat, alpha=-1)
 	error = 0.5 * (torch.linalg.vecdot(distance, distance)).sum()
 	return error
+	
+def binarize(i: int, n: int):
+	'''
+	returns a list of length n, with all zeros except at position i
+	'''
+	output = torch.zeros((n,))
+	output[ i ] = 1
+	return output.tolist()
 	
 def read_in_data():
 	'''
@@ -58,19 +87,29 @@ def read_in_data():
 	gold_tensor = []
 	features_tensor= []
 	
-	for v in input:
-		
+	for word in input:
+		input_tensor.append(torch.Tensor(word)
+	for word in gold:
+		golld_tensor.append(torch.Tensor(word))
+	for f in features:
+		word_list = []
+		for word in f:
+			word_list.append(torch.Tensor(word)
+		features_tensor.append(word_list)
+	return input_tensor, gold_tensor, features_tensor
+			
+			
 	
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
-	parser.add_argument(''-r', '--reset', action = 'store_true', help='reset model parameters from past training')
+	parser.add_argument(''-r', '--reset', action = 'store_true', help='reset model parameters')
 	args = parser.parse_args()
 	
 	network = none
 	if args.reset:
 		network = StressClassifier.Network()
 	else:
-		path = Path('model')
+		path = Path('model.json')
 		model_parameters = json.load(path.open(mode='r'))
 		for key, value in model_parameters.items():
 			model_parameters[key] = torch.Tensor(value)

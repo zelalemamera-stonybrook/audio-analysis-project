@@ -84,7 +84,7 @@ def normalize_and_pad(output_list: list):
 	normalized = torch.addcdiv(t, (tensor - mean) , std)
 	embedded= []
 	for syll in normalized:
-		embedded.append(pad(syll, 1000).tolist())
+		embedded.append(pad(syll, 990).tolist())
 	word_list = []
 	size = 0
 	for n in word_size:
