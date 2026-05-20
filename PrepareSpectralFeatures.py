@@ -36,7 +36,7 @@ def clean_tables(df_dict):
                 dataframe.sort_values(by=['key', 'name'], inplace=True)
                 new_index = [i for i in range(len(dataframe))]
                 dataframe.set_index(pd.Index(new_index), inplace=True)
-                new_list.append(dataframe.drop(columns=['key', 'filename', 'name']))
+                new_list.append(dataframe.drop(columns=['key', 'fileName', 'name']))
             df_dict[key][key2] = new_list
     return df_dict
    
@@ -47,16 +47,19 @@ def collect_words(df: DataFrame, syllable: str):
 	input shape: n * k where k is the number of words and n is syllables
 	output shape: k 
 	'''	
-	key = {'syllable_2': 2, 'syllable_3':3, 'syllable_4':4}
+	key = {'syllable_2': 2, 'syllable_3': 3, 'syllable_4': 4}
 	n = key[syllable]
 	lst = []
-	for i in range( len(df) / n):
+	print('words found: ', len(df) / n)
+	length = int(len(df) / n)
+	for i in range( length):
 		lst += torch.full((n,), i).tolist()
 	df['key'] = lst
 	feature_list = []
-	for i in range(len(df) / n):
+	for i in range(length):
 		word_features = df[df['key'] == i]
-		feature_list.append(word_features.to_numpy().tolist())
+		features = word_features.drop(columns='key').astype('float32').to_numpy().tolist()
+		feature_list.append(features)
 	return feature_list
     
 def write_spectral_features(df_dict: dict):
@@ -87,7 +90,7 @@ def prepare_data():
 	
 
 	train_formant_2_syll_table = pd.read_csv('spectral_data/syllable_2/train/duration_formant.csv')
-	train_duration_2_syll_table = pd.concat([train_formant_2_syll_table['duration'], train_formant_2_syll_table['filename'], train_formant_2_syll_table['name']], axis=1)
+	train_duration_2_syll_table = pd.concat([train_formant_2_syll_table['duration'], train_formant_2_syll_table['fileName'], train_formant_2_syll_table['name']], axis=1)
 	train_formant_2_syll_table.drop(columns='duration', inplace=True)
 	
 	train_intensity_2_syll_table = pd.read_csv('spectral_data/syllable_2/train/duration_intensity.csv')
@@ -97,7 +100,7 @@ def prepare_data():
 	train_pitch_2_syll_table.drop(columns='duration', inplace=True)
 
 	dev_formant_2_syll_table = pd.read_csv('spectral_data/syllable_2/dev/duration_formant.csv')
-	dev_duration_2_syll_table = pd.concat([dev_formant_2_syll_table['duration'], dev_formant_2_syll_table['filename'],dev_formant_2_syll_table['name']], axis=1)
+	dev_duration_2_syll_table = pd.concat([dev_formant_2_syll_table['duration'], dev_formant_2_syll_table['fileName'],dev_formant_2_syll_table['name']], axis=1)
 	dev_formant_2_syll_table.drop(columns='duration', inplace=True)
 	
 	dev_intensity_2_syll_table = pd.read_csv('spectral_data/syllable_2/dev/duration_intensity.csv')
@@ -107,7 +110,7 @@ def prepare_data():
 	dev_pitch_2_syll_table.drop(columns='duration', inplace=True)
 
 	test_formant_2_syll_table = pd.read_csv('spectral_data/syllable_2/test/duration_formant.csv')
-	test_duration_2_syll_table = pd.concat([test_formant_2_syll_table['duration'], test_formant_2_syll_table['filename'],test_formant_2_syll_table['name']], axis=1)
+	test_duration_2_syll_table = pd.concat([test_formant_2_syll_table['duration'], test_formant_2_syll_table['fileName'],test_formant_2_syll_table['name']], axis=1)
 	test_formant_2_syll_table.drop(columns='duration', inplace=True)
 	
 	test_intensity_2_syll_table = pd.read_csv('spectral_data/syllable_2/test/duration_intensity.csv')
@@ -117,7 +120,7 @@ def prepare_data():
 	test_pitch_2_syll_table.drop(columns='duration', inplace=True)
 	
 	train_formant_3_syll_table = pd.read_csv('spectral_data/syllable_3/train/duration_formant.csv')
-	train_duration_3_syll_table = pd.concat([train_formant_3_syll_table['duration'], train_formant_3_syll_table['filename'], train_formant_3_syll_table['name']], axis=1)
+	train_duration_3_syll_table = pd.concat([train_formant_3_syll_table['duration'], train_formant_3_syll_table['fileName'], train_formant_3_syll_table['name']], axis=1)
 	train_formant_3_syll_table.drop(columns='duration', inplace=True)
 	
 	train_intensity_3_syll_table = pd.read_csv('spectral_data/syllable_3/train/duration_intensity.csv')
@@ -127,7 +130,7 @@ def prepare_data():
 	train_pitch_3_syll_table.drop(columns='duration', inplace=True)
 
 	dev_formant_3_syll_table = pd.read_csv('spectral_data/syllable_3/dev/duration_formant.csv')
-	dev_duration_3_syll_table = pd.concat([dev_formant_3_syll_table['duration'],dev_formant_3_syll_table['filename'],dev_formant_3_syll_table['name']], axis = 1)
+	dev_duration_3_syll_table = pd.concat([dev_formant_3_syll_table['duration'],dev_formant_3_syll_table['fileName'],dev_formant_3_syll_table['name']], axis = 1)
 	dev_formant_3_syll_table.drop(columns='duration', inplace=True)
 	
 	dev_intensity_3_syll_table = pd.read_csv('spectral_data/syllable_3/dev/duration_intensity.csv')
@@ -137,7 +140,7 @@ def prepare_data():
 	dev_pitch_3_syll_table.drop(columns='duration', inplace=True)
 	
 	test_formant_3_syll_table = pd.read_csv('spectral_data/syllable_3/test/duration_formant.csv')
-	test_duration_3_syll_table = pd.concat([test_formant_3_syll_table['duration'],test_formant_3_syll_table['filename'],test_formant_3_syll_table['name']], axis=1)
+	test_duration_3_syll_table = pd.concat([test_formant_3_syll_table['duration'],test_formant_3_syll_table['fileName'],test_formant_3_syll_table['name']], axis=1)
 	test_formant_3_syll_table.drop(columns='duration', inplace=True)
 	
 	test_intensity_3_syll_table = pd.read_csv('spectral_data/syllable_3/test/duration_intensity.csv')
@@ -147,7 +150,7 @@ def prepare_data():
 	test_pitch_3_syll_table.drop(columns='duration', inplace=True)
 	
 	train_formant_4_syll_table = pd.read_csv('spectral_data/syllable_4/train/duration_formant.csv')
-	train_duration_4_syll_table = pd.concat([train_formant_4_syll_table['duration'],train_formant_4_syll_table['filename'],train_formant_4_syll_table['name']], axis=1)
+	train_duration_4_syll_table = pd.concat([train_formant_4_syll_table['duration'],train_formant_4_syll_table['fileName'],train_formant_4_syll_table['name']], axis=1)
 	train_formant_4_syll_table.drop(columns='duration', inplace=True)
 	
 	train_intensity_4_syll_table = pd.read_csv('spectral_data/syllable_4/train/duration_intensity.csv')
@@ -157,7 +160,7 @@ def prepare_data():
 	train_pitch_4_syll_table.drop(columns='duration', inplace=True)
 
 	dev_formant_4_syll_table = pd.read_csv('spectral_data/syllable_4/dev/duration_formant.csv')
-	dev_duration_4_syll_table = pd.concat([dev_formant_4_syll_table['duration'],dev_formant_4_syll_table['filename'],dev_formant_4_syll_table['name']], axis=1)
+	dev_duration_4_syll_table = pd.concat([dev_formant_4_syll_table['duration'],dev_formant_4_syll_table['fileName'],dev_formant_4_syll_table['name']], axis=1)
 	dev_formant_4_syll_table.drop(columns='duration', inplace=True)
 	
 	dev_intensity_4_syll_table = pd.read_csv('spectral_data/syllable_4/dev/duration_intensity.csv')
@@ -167,7 +170,7 @@ def prepare_data():
 	dev_pitch_4_syll_table.drop(columns='duration', inplace=True)
 	
 	test_formant_4_syll_table = pd.read_csv('spectral_data/syllable_4/test/duration_formant.csv')
-	test_duration_4_syll_table = pd.concat([test_formant_4_syll_table['duration'],test_formant_4_syll_table['filename'],test_formant_4_syll_table['name']], axis=1)
+	test_duration_4_syll_table = pd.concat([test_formant_4_syll_table['duration'],test_formant_4_syll_table['fileName'],test_formant_4_syll_table['name']], axis=1)
 	test_formant_4_syll_table.drop(columns='duration', inplace=True)
 	
 	test_intensity_4_syll_table = pd.read_csv('spectral_data/syllable_4/test/duration_intensity.csv')

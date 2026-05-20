@@ -24,7 +24,7 @@ def train(network: Network , input: list[Tensor], gold: list[Tensor], features: 
 	while epoch > 0:
 		optim.zero_grad()
 		error = 0
-		n = torch.randint(0, N, 20)
+		n = torch.randint(N, (20,))
 		for i in n:
 			x, y = input[i], gold[i]
 			f = filter(features, i)
@@ -44,13 +44,14 @@ def train(network: Network , input: list[Tensor], gold: list[Tensor], features: 
 def filter(features:list[list[Tensor]], i: int):
 	'''
 	returns the ith tensor of each list in features
+	output: list[Tensor]
 	'''
 	f = []
-	for feature in features:
-		f.append(feature[i])
+	for word_list in features:
+		f.append(word_list[i])
 	return f
 		
-def compute_loss(y_hat: Tensor, y: Tensor)
+def compute_loss(y_hat: Tensor, y: Tensor):
 	'''
 	measures the distance of the prediction y hat to y and returns the result.
 	y_hat shape: (n, 2)
@@ -88,13 +89,13 @@ def read_in_data():
 	features_tensor= []
 	
 	for word in input:
-		input_tensor.append(torch.Tensor(word)
+		input_tensor.append(torch.Tensor(word))
 	for word in gold:
-		golld_tensor.append(torch.Tensor(word))
+		gold_tensor.append(torch.Tensor(word))
 	for f in features:
 		word_list = []
 		for word in f:
-			word_list.append(torch.Tensor(word)
+			word_list.append(torch.Tensor(word))
 		features_tensor.append(word_list)
 	return input_tensor, gold_tensor, features_tensor
 			
@@ -102,10 +103,10 @@ def read_in_data():
 	
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
-	parser.add_argument(''-r', '--reset', action = 'store_true', help='reset model parameters')
+	parser.add_argument('-r', '--reset', action = 'store_true', help='reset model parameters')
 	args = parser.parse_args()
 	
-	network = none
+	network = None
 	if args.reset:
 		network = StressClassifier.Network()
 	else:
@@ -114,7 +115,11 @@ if __name__ == '__main__':
 		for key, value in model_parameters.items():
 			model_parameters[key] = torch.Tensor(value)
 		network = StressClassifier.Network(model_parameters)
+	print('reading in training data')
 	input, gold, features = read_in_data()
+	print('input shape', len(input), input[-1].shape)
+	print('gold shape', len(gold), gold[-1].shape)
+	print('features shape', len(features), len(features[-1]), features[-1][-1].shape)
 	train(network, input, gold, features)
 	
 	

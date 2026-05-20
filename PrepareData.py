@@ -29,7 +29,9 @@ def pad(vec: Tensor, n):
 	input shape: (k,)
 	output shape: (n, )
 	'''
-	diff = n - vec.shape[0]
+	if vec.shape == torch.tensor([1])[0].shape:
+		vec = torch.tensor([vec])
+	diff = n - len(vec)
 	pad = torch.zeros((diff // 2,))
 	first = pad.tolist()
 	first += vec.tolist()
@@ -54,7 +56,7 @@ def variance(vector_list: list):
 	meanx = mean(vector_list)
 	x_squared = []
 	for vec in vector_list:
-		x_squared.append(vec**2)
+		x_squared.append((vec**2).tolist())
 	x_squared = torch.Tensor(x_squared)
 	meanx2 = mean(x_squared)
 	t = torch.zeros(meanx.shape)
@@ -65,7 +67,7 @@ def variance(vector_list: list):
 def normalize_and_pad(output_list: list):
 	'''
 	the list in question is a sequence of words. each word is a list of syllables, for whom we have extracted a feature. this feature needs to be normalized over the whole set of syllables.
-	then it is zero padded to 1k
+	then it is zero padded to 990
 	input shape: [w1,...,wn] where wi = [s1, s2, s3], [s1, s2], or [s1,s2,s3,s4]
 	output shape: input shape
 	the order of the sequence of words and syllables must be preserved.
@@ -76,12 +78,12 @@ def normalize_and_pad(output_list: list):
 		word_size.append(len(word))
 	for word in output_list:
 		for vec in word:
-			vector_list.append(torch.Tensor(vec))
+			vector_list.append(vec)
 	tensor = torch.Tensor(vector_list)
-	mean = mean(tensor)
+	mn = mean(tensor)
 	std = variance(tensor) ** 0.5
 	t = torch.zeros(tensor.shape)
-	normalized = torch.addcdiv(t, (tensor - mean) , std)
+	normalized = torch.addcdiv(t, (tensor - mn) , std)
 	embedded= []
 	for syll in normalized:
 		embedded.append(pad(syll, 990).tolist())
@@ -146,9 +148,11 @@ def prepare_data(batch: str):
 	for path in path_list:
 		directory = Path(path)
 		csv_path = next(directory.glob('*.csv'))
+		print('reading from', csv_path)
 		dataframe = pd.read_csv(csv_path)
 		for i in range(len(dataframe)):
 			word = sorted(list(directory.glob(f'file{i}*.wav')))
+			print('reading in word', word)
 			padded_word = []
 			for syllable in word:
 				audio, samplerate = torchaudio.load(syllable)
@@ -167,8 +171,8 @@ def prepare_data(batch: str):
 	
 if __name__ == '__main__':
 	prepare_data('train')
-	prepare_data('test')
-	prepare_data('dev')
+	#prepare_data('test')
+	#prepare_data('dev')
 	
 	PrepareSpectralFeatures.prepare_data()
 	

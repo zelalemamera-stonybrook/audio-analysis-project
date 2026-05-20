@@ -34,7 +34,7 @@ def evaluate(netwok: StressClassifier, input_data: tuple):
 		output.append(y_hat)
 		attention_weights.append(network.attention_weights)
 	
-	cycles, syllables, recall, precision, fscore = network.cycles, len(gold[0]), recall(output, gold), precision(output, gold), f_score(recall(output, gold), precision(output, gold))
+	cycles, syllables, recall, precision, fscore = network.cycles.item(), len(gold[0]), recall(output, gold), precision(output, gold), f_score(recall(output, gold), precision(output, gold))
 	write_results(cycles, syllables, acc, precision, fscore, 'dev')
 	write_feature_weights(output, gold, attention_weights, 'dev')
 	
