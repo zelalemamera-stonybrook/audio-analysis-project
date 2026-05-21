@@ -76,6 +76,7 @@ def normalize_and_pad(output_list: list):
 	word_size = []
 	for word in output_list:
 		word_size.append(len(word))
+	print('word sizes found', word_size)
 	for word in output_list:
 		for vec in word:
 			vector_list.append(vec)
@@ -91,6 +92,7 @@ def normalize_and_pad(output_list: list):
 	size = 0
 	for n in word_size:
 		word_list.append(embedded[size: size + n])
+		print('appended word' , len(word_list[-1]))
 		size += n
 	return word_list
 		
@@ -118,9 +120,16 @@ def write_data(data_dict: dict):
 				output_list += word_list
 				size += len(word_list)
 			batch_sizes.append(size)
+		print('batches found', batch_sizes)
 		embedded_output = normalize_and_pad(output_list)
 		train_size, test_size, dev_size = batch_sizes[0], batch_sizes[1], batch_sizes[-1]
 		train_list, test_list, dev_list = embedded_output[:train_size], embedded_output[train_size: train_size + test_size], embedded_output[train_size + test_size:]
+		print('train size', train_size)
+		print('train features generated', len(train_list))
+		print('test size', test_size)
+		print('test features generated', len(test_list))
+		print('dev size', dev_size)
+		print('dev features generated', len(dev_list))
 		features_train.append(train_list)
 		features_test.append(test_list)
 		features_dev.append(dev_list)
@@ -130,6 +139,7 @@ def write_data(data_dict: dict):
 	path1.touch()
 	path2.touch()
 	path3.touch()
+	print('writing feature batches')
 	json.dump(features_train, path1.open(mode='w'))
 	json.dump(features_test, path2.open(mode='w'))
 	json.dump(features_dev, path3.open(mode='w'))			
@@ -145,13 +155,16 @@ def prepare_data(batch: str):
 				f'wavefiles_syllabified/syllable_3/{batch}',
 				f'wavefiles_syllabified/syllable_4/{batch}'
 				]
-	for path in path_list:
+	for n, path in enumerate(path_list):
+		syl = n + 2
 		directory = Path(path)
 		csv_path = next(directory.glob('*.csv'))
 		print('reading from', csv_path)
 		dataframe = pd.read_csv(csv_path)
 		for i in range(len(dataframe)):
-			word = sorted(list(directory.glob(f'file{i}*.wav')))
+			word = []
+			for j in range(syl):
+				word.append(next(directory.glob(f'file{i}{j+1}.wav')))
 			print('reading in word', word)
 			padded_word = []
 			for syllable in word:
@@ -163,16 +176,18 @@ def prepare_data(batch: str):
 	Path(f'{batch}_data').mkdir()
 	input = Path(f'{batch}_data/input.json')
 	input.touch()
+	print('writing input to directory')
 	json.dump(input_list, input.open(mode='w'))
 	gold = Path(f'{batch}_data/gold.json')
 	gold.touch()
+	print('writing gold to directory')
 	json.dump(gold_list, gold.open(mode='w'))
 	
 	
 if __name__ == '__main__':
 	prepare_data('train')
-	#prepare_data('test')
-	#prepare_data('dev')
+	prepare_data('test')
+	prepare_data('dev')
 	
 	PrepareSpectralFeatures.prepare_data()
 	

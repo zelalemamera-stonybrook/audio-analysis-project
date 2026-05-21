@@ -78,6 +78,7 @@ def write_spectral_features(df_dict: dict):
 			feature_list = clean_dict[syllable][batch]
 			for feature_df in feature_list:
 				new_dict[syllable][batch].append(collect_words(feature_df, syllable))
+	print('writing spectral dictionary')
 	path = Path('spectral_dictionary.json')
 	path.touch()
 	json.dump(new_dict, path.open(mode='w'))
@@ -88,7 +89,7 @@ def prepare_data():
 	main function which prepares all of the spectral features and writes them as a json dictionary to the current directory.
 	'''
 	
-
+	print('reading in feature tables')
 	train_formant_2_syll_table = pd.read_csv('spectral_data/syllable_2/train/duration_formant.csv')
 	train_duration_2_syll_table = pd.concat([train_formant_2_syll_table['duration'], train_formant_2_syll_table['fileName'], train_formant_2_syll_table['name']], axis=1)
 	train_formant_2_syll_table.drop(columns='duration', inplace=True)

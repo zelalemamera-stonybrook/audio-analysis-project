@@ -50,7 +50,7 @@ class Network(nn.Module):
 			self.recurrent_right_hidden = nn.parameter.Parameter(torch.rand((1000,1000), requires_grad = True))
 			self.recurrent_right_hidden_bias = nn.parameter.Parameter(torch.rand((1000), requires_grad = True))
 		
-			self.recurrent_out1 = nn.parameter.Parameter(torch.rand((100,1000), requires_grad = True))
+			self.recurrent_out1 = nn.parameter.Parameter(torch.rand((100, 2000), requires_grad = True))
 			self.recurrent_out1_bias = nn.parameter.Parameter(torch.rand((100), requires_grad = True))
 			self.recurrent_out2 = nn.parameter.Parameter(torch.rand((2, 100), requires_grad = True))
 			self.recurrent_out2_bias = nn.parameter.Parameter(torch.rand((2), requires_grad = True))
@@ -59,7 +59,7 @@ class Network(nn.Module):
 			self.sigmoid = nn.Sigmoid()
 			self.softmax = nn.Softmax(dim=-1)
 					
-	def forward(self, word: Tensor, features: list[Tensor], debug=False):
+	def forward(self, word: Tensor, features: Tensor, debug=False):
 		'''
 		passes the word once through the network, and returns the output. 
 		input shape: (n, 30,000)
@@ -70,30 +70,35 @@ class Network(nn.Module):
 		if debug:
 			return torch.zeros((word.shape[0], 2))
 		sound_vec_embedding = []
-		print('word shape', word.shape)
-		print('word features shape', len(features), features[-1].shape)
+		print('embedding syllables')
 		for syll in word:
-			print('syll_dimension', syll.shape)
+			print('syll dimension', syll.shape)
 			sound_vec_embedding.append(self.embed(syll))
-			print('embedding_dimension', sound_vec_embedding[-1].shape)
+			print('syllable embedded', sound_vec_embedding[-1].shape)
 		feature_injected_vecs = []
+		print('injecting features')
 		for i, syll in enumerate(sound_vec_embedding):
 			syll_features = self.filter(features, i)
+			print('features to be injected', syll_features.shape)
 			feature_injected_vecs.append(self.inject_features(syll, syll_features))
+			print('weighted and feature injected vector representation', feature_injected_vecs[-1].shape)
 		word_encoding = []
+		print('encoding vectors')
 		for syll in feature_injected_vecs:
-			word_encoding.append(self.encode(syll).tolist())
-		output = self.rnn_forward(torch.Tensor(word_encoding))
+			word_encoding.append(self.encode(syll))
+			print('vector encoded', word_encoding[-1].shape)
+		print('starting bi-directional recurrent network')
+		output = self.rnn_forward(torch.stack(word_encoding))
 		return output
 
-	def filter(self, features: list[Tensor], i: int):
+	def filter(self, features: Tensor, i: int):
 		'''
 		returns the ith element of each tensor in features
 		'''
 		filtered_list = []
 		for word in features:
 			filtered_list.append(word[i])
-		return filtered_list
+		return torch.stack(tuple(filtered_list))
 			
 	def encode(self, syll: Tensor):
 		'''
@@ -104,8 +109,10 @@ class Network(nn.Module):
 		prev = torch.ones((self.encode_hidden.shape[0],))
 		n = 0
 		length =  int(len(syll) / self.encode_in.shape[1])
+		print('passing through vector')
 		for i in range(length):
 			input = syll[n: n + self.encode_in.shape[1]]
+			print('reading context', input.shape)
 			hidden = self.tanh(torch.matmul(self.encode_in, input) + self.encode_in_bias + torch.matmul(self.encode_hidden, prev) + self.encode_hidden_bias)
 			prev = hidden
 			n += self.encode_in.shape[1]
@@ -126,7 +133,7 @@ class Network(nn.Module):
 		
 		return conv_third.reshape(-1)
 		
-	def inject_features(self, embedding: Tensor, features: list[Tensor]):
+	def inject_features(self, embedding: Tensor, features: Tensor):
 		'''
 		injects our linguistic features into the embedding, then computes self attention weights with respect to the sequence and returns the weighted sum. 
 		input shape: (990)
@@ -134,30 +141,33 @@ class Network(nn.Module):
 		'''
 		injected_list = []
 		for feature in features:
-			injected_list.append((embedding + feature).tolist())
-		attended = self.attend(injected_list)
+			injected_list.append((embedding + feature))
+		attended = self.attend(torch.stack(injected_list))
 		return attended
 		
 		
 	
 		
-	def attend(self, embedded_list: list[Tensor]):
+	def attend(self, embedded_tensors: Tensor):
 		'''
 		computes the attention score of each element in the list with respect to the other elements, then returns the weighted sum of the whole
 		input shape: list
 		output shape: (990)
 		'''
+		print('starting attention network')
 		weights_matrix = []
-		embedded_tensors = torch.Tensor(embedded_list)
-		print('embedded tensors shape', embedded_tensors.shape)
+		print('compatibility is computed over', embedded_tensors.shape)
 		for attention_source in embedded_tensors:
 			weight_list = []
 			for attention_target in embedded_tensors:
-				weight_list.append(self.attention_forward(attention_source, attention_target).item())
+				weight_list.append(self.attention_forward(attention_source, attention_target))
 				print('attention score', weight_list[-1])
-			weight_tensor = torch.Tensor(weight_list)
-			weights_matrix.append(self.softmax(weight_tensor).tolist())
-		weights_tensor = torch.Tensor(weights_matrix)
+			weight_tensor = torch.stack(weight_list).reshape(-1)
+			print('compatibility scores computed', weight_tensor)
+			weights_matrix.append(self.softmax(weight_tensor))
+			print('weight distribution', weights_matrix[-1])
+		weights_tensor = torch.stack((weights_matrix), dim=1)
+		print('weights matrix', weights_tensor)
 		attention_vector = torch.max(weights_tensor, dim=1)[0]
 		print('attention vector', attention_vector)
 		self.feature_weights.append(tuple(torch.round(attention_vector, decimals=2).tolist()))
@@ -168,16 +178,15 @@ class Network(nn.Module):
 	def attention_forward(self, attention_source: Tensor, attention_target: Tensor):
 		'''
 		computes the compatibility score of the source to the target
-		input shape: (2000)
+		input shape: (990 * 2)
 		output shape: (1)
 		'''
-		input = torch.Tensor([attention_source.tolist(), attention_target.tolist()]).reshape(-1)
-		
+		input = torch.cat((attention_source, attention_target))
 		first_layer = self.tanh(torch.matmul( self.attnlayer1, input ) + self.attnlayer1_bias)
 		second_layer = self.sigmoid(torch.matmul(self.attnlayer2, first_layer ) + self.attnlayer2_bias)
 		return second_layer
 		
-	def rnn_forward(self, injected_list: list[Tensor]):
+	def rnn_forward(self, injected_list: Tensor):
 		'''
 		passes the list of feature injected and attention weighted tensors through one pass of a bi-directional reccurrent network, and returns the output sequence as a list of probability distributions over the two classes. 
 		input shape: (n, 500)
@@ -186,26 +195,33 @@ class Network(nn.Module):
 		prev = torch.ones((self.recurrent_left_hidden.shape[0]),)
 		hidden_list = []
 		for input in injected_list:
-			hidden = self.tanh(torch.mm(self.recurrent_left_in, input) + self.recurrent_left_in_bias + torch.matmul(self.recurrent_left_hidden, prev) + self.recurrent_left_hidden_bias)
+			hidden = self.tanh(torch.matmul(self.recurrent_left_in, input) + self.recurrent_left_in_bias + torch.matmul(self.recurrent_left_hidden, prev) + self.recurrent_left_hidden_bias)
 			hidden_list.append(hidden)
 			prev = hidden
 		reverse_hidden_list = []
-		prev = torch.ones((1000))
-		for input in reverse(injected_list):
-			hidden = self.tanh(torch.mm(self.recurrent_right_in, input) + self.recurrent_right_in_bias + torch.matmul(self.recurrent_right_hidden, prev) + self.recurrent_right_hidden_bias)
+		prev = torch.ones((self.recurrent_left_hidden.shape[0]),)
+		n = len(injected_list) - 1
+		while n >= 0:
+			input = injected_list[n]
+			hidden = self.tanh(torch.matmul(self.recurrent_right_in, input) + self.recurrent_right_in_bias + torch.matmul(self.recurrent_right_hidden, prev) + self.recurrent_right_hidden_bias)
 			reverse_hidden_list.append(hidden)
 			prev = hidden
-		hidden_list2 = list(reverse(reverse_hidden_list))
+			n -= 1
+		hidden_list2 = []
+		n = len(reverse_hidden_list) - 1
+		while n >= 0:
+			hidden_list2.append(reverse_hidden_list[n])
+			n-=1
 		full_context = []
 		for hidden1, hidden2 in zip(hidden_list, hidden_list2):
-			full = (torch.Tensor([hidden1, hidden2])).reshape(-1)
+			full = torch.cat((hidden1, hidden2))
 			full_context.append(full)
 		output_list = []
 		for hidden in full_context:
-			first_layer = self.sigmoid(torch.mm(self.recurrent_out1, hidden) + self.recurrent_out1_bias)
-			second_layer = self.softmax(torch.mm(self.recurrent_out2, first_layer) + self.recurrent_out2_bias)
+			first_layer = self.sigmoid(torch.matmul(self.recurrent_out1, hidden) + self.recurrent_out1_bias)
+			second_layer = self.softmax(torch.matmul(self.recurrent_out2, first_layer) + self.recurrent_out2_bias)
 			output_list.append(second_layer)
-		return torch.Tensor(output_list)
+		return torch.stack(output_list)
 			
 		
 	
