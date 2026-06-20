@@ -1,1 +1,78 @@
-This repository holds all of the relevant data and code for our stress analysis project. I will try to make it as up to date as possible. 
+This repository holds all of the relevant files for our stress analysis project. You may clone this repository to replicate all of the steps that were involved during the development of this model. The pipeline begins with raw audio and ipa tables. These were obtained from our data source and were modified slightly for ease and convenience. In particular, we chose to remove one syllable data from the original dataset because we make the assumption that monosyllabic words in this language (Jordanian Arabic) are all stressed and hence do not contribute additional information to the classification model. Additionally, we generate syllable information from the ipa and split the data by syllables; this makes the subsequent steps of the preprocessing more efficient. The model is not trained on separate syllables so there is no distinction made between words of different syllable lengths, at least at this point. All code is assumed to be running from the root of this directory unless any subprocesses are called within some subdirectories, which will always be done automatically and will not require any user input. 
+
+In order to replicate the steps of this pipeline successfully, we assume that you have installed python and two critical audio analysis softwares Praat and MFA(montreal forced aligner). Audio files need to be aligned to text so some sort of forced alignment is needed, we choose to use MFA because it is a standard in linguistics. You may be able to obtain forced alignments in another way, for example a neural network, we only make the assumption that the method you use has the ability to generate textgrids, which are the objects that Praat operates on. We use Praat for generating syllables and relevant acoustic and spectral features from the audio. We believe that using spectral features in addition to sound vectors is benefitial to the performance of the model. Additionally, one of our research goals is to understand the impact of acoustic features on stress so including them in the data is important. You may skip feature generation entirely and apply the model exclusively on raw audio data, the performance difference is probably not that significant. 
+
+In order to start step 1 of the preprocessing pipleline, run
+
+python preprocessing/PrepareAlignments.py
+
+this generates the text and audio corpus for the forced aligner. The next steps assume you are working with MFA and that you have installed it using conda. So that you can run
+
+conda activate aligner
+
+to start your aligner. we next move to step 2
+
+bash preprocessing/align_exec.sh
+
+this aligns all of the batches from the previous and generate all of the required textgrids. Once you are done please deactivate your aligner environment 
+
+conda deactivate
+
+Then export the location of your Praat application via
+
+export PRAAT=path
+
+replace path with the direct path to Praat on your computer, which may be obtained by just following
+
+cd /
+
+which should bring you to the root of your computer, then 
+
+ls
+
+should reveal a folder called Applications
+
+and you may subsequently search in this directory to find Praat, otherwise Praat may be installed in your User directory which you can access using
+
+cd ~
+
+or following your Users subfolder from the root.
+
+then continue the same step by going down the Applications folder. If you can't find Praat in this manner, consult other sources, or install Praat again. 
+
+once you have the praat path stored in the PRAAT environmental variable, you may call step 3 of the pipeline.
+
+bash preprocessing/syllabify_exec.sh
+
+this syllabifies all of the aligned audio from step 2. 
+
+if you want features, you should next run
+
+bash preprocessing/spectral_exec.sh
+
+which generates features for each syllabified dataset. 
+
+by this point all of the data should be prepared for the inital parts of model ingestion. To convert the data to vectors run step 4 of the pipeline. 
+
+python preprocessing/PrepareData.py
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
