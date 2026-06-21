@@ -1,10 +1,6 @@
 '''
-The following code specifies a deep learning architecture that classifies stress position of an input audio file. Due to the high dimensionality of the audio data, and the variability of the length of the input vectors, we pass the audio through 
-a convolutional filter to extract higher level representations, followed by encoding. The inputs of each sound file are thus a sequence of vector embeddings representing the sequence of syllables in the word. This sequence is
-presented to a bi directional RNN which uses the full contedxtual information of the sequence to classify each of the syallbles as stressed or unstressed. In order to introduce some interpretibility to the model, for each syllable embedding we inject linguisticly relevant
-spectral features. Specifically, for any n features that we can generate from the syllable, we make n copies of the embedding and inject each with a separate feature, then take a linear combination of those. this provides the model with the same information altered perhaps by the presence of a specific 
-feature. In order to measure the impact that any such feature might have, we make the weights learnable functions of the input. In particular, we combine the input sequence with a k fully connected layers that produce the relevant weight
-for each vector in the sequence. These weights are therefore learned as part of the network and can later be studied to potentially infer the importance of a feature.
+The following code specifies a neural network that takes as its input a word (treated as a sequence of syllables) and outputs a sequence of probability distributions (one for each syllable). 
+We try to use some sort of attention mechanism to infer the importance of the linguistic features used. 
 '''
 
 import torch
