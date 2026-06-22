@@ -71,27 +71,33 @@ class Network(nn.Module):
 		if debug:
 			return torch.zeros((word.shape[0], 2))
 		sound_vec_embedding = []
-		print('embedding syllables')
+		#print('embedding syllables')
 		for syll in word:
-			print('syll dimension', syll.shape)
+			#print('syll received', syll.shape)
 			sound_vec_embedding.append(self.embed(syll))
-			print('syllable embedded', sound_vec_embedding[-1].shape)
+			#print('syllable embedded')
+			#analyze_graph(sound_vec_embedding[-1])
 		feature_injected_vecs = []
-		print('injecting features')
+		feature_injected_vecs = sound_vec_embedding
+		#print('injecting features')
+		'''
 		for i, syll in enumerate(sound_vec_embedding):
 			syll_features = self.filter(features, i)
-			print('features to be injected', syll_features.shape)
+			print('features to be injected', syll_features.grad_fn)
 			feature_injected_vecs.append(self.inject_features(syll, syll_features))
-			print('weighted and feature injected vector representation', feature_injected_vecs[-1].shape)
+			#print('weighted and feature injected vector representation', feature_injected_vecs[-1].shape)
+		'''
 		word_encoding = []
-		print('encoding vectors')
+		#print('encoding vectors')
 		for syll in feature_injected_vecs:
 			word_encoding.append(self.encode(syll))
-			print('vector encoded', word_encoding[-1].shape)
-		print('starting bi-directional recurrent network')
+			#print('vector encoded')
+			#analyze_graph(word_encoding[-1])
+		#print('starting bi-directional recurrent network')
 		output = self.rnn_forward(torch.stack(word_encoding))
 		print('finished forward pass')
 		return output
+		
 
 	def filter(self, features: Tensor, i: int):
 		'''
@@ -111,7 +117,7 @@ class Network(nn.Module):
 		prev = torch.ones((self.encode_hidden.shape[0],))
 		n = 0
 		length =  int(len(syll) / self.encode_in.shape[1])
-		print('passing through vector')
+		#print('passing through vector')
 		for i in range(length):
 			input = syll[n: n + self.encode_in.shape[1]]
 			hidden = self.sigmoid(torch.matmul(self.encode_in, input) + self.encode_in_bias + torch.matmul(self.encode_hidden, prev) + self.encode_hidden_bias)
@@ -155,13 +161,13 @@ class Network(nn.Module):
 		input shape (990 * 2)
 		output shape (990)
 		'''
-		print('combining features and audio')
+		#print('combining features and audio')
 		input = torch.cat((embedding, encoded_feature))
-		print(input.shape)
+		#print(input.shape)
 		first_layer = self.sigmoid(torch.matmul(self.combine_layer1, input) + self.combine_layer1_bias)
 		second_layer = self.sigmoid(torch.matmul(self.combine_layer2, first_layer) + self.combine_layer2_bias)
-		print('combined')
-		print(second_layer.shape)
+		#print('combined')
+		#print(second_layer.shape)
 		return second_layer
 		
 
@@ -174,7 +180,7 @@ class Network(nn.Module):
 		prev = torch.ones((self.feature_encoder_hidden.shape[0],))
 		n = 0
 		length =  int(len(feature) / self.feature_encoder_in.shape[1])
-		print('encoding feature')
+		#print('encoding feature')
 		for i in range(length):
 			input = feature[n: n + self.feature_encoder_in.shape[1]]
 			hidden = self.sigmoid(torch.matmul(self.feature_encoder_in, input) + self.feature_encoder_in_bias + torch.matmul(self.feature_encoder_hidden, prev) + self.feature_encoder_hidden_bias)
@@ -188,22 +194,22 @@ class Network(nn.Module):
 		input shape: list
 		output shape: (990)
 		'''
-		print('starting attention network')
+		#print('starting attention network')
 		weights_matrix = []
-		print('compatibility is computed over', embedded_tensors.shape)
+		#print('compatibility is computed over', embedded_tensors.shape)
 		for attention_source in embedded_tensors:
 			weight_list = []
 			for attention_target in embedded_tensors:
 				weight_list.append(self.attention_forward(attention_source, attention_target))
-				print('attention score', weight_list[-1])
+				#print('attention score', weight_list[-1])
 			weight_tensor = torch.stack(weight_list).reshape(-1)
-			print('compatibility scores computed', weight_tensor)
+			#print('compatibility scores computed', weight_tensor)
 			weights_matrix.append(self.softmax(weight_tensor))
-			print('weight distribution', weights_matrix[-1])
+			#print('weight distribution', weights_matrix[-1])
 		weights_tensor = torch.stack((weights_matrix), dim=1)
-		print('weights matrix', weights_tensor)
+		#print('weights matrix', weights_tensor)
 		attention_vector = torch.max(weights_tensor, dim=1)[0]
-		print('attention vector', attention_vector)
+		#print('attention vector', attention_vector)
 		self.feature_weights.append(tuple(torch.round(attention_vector, decimals=2).tolist()))
 		weighted = torch.matmul(attention_vector, embedded_tensors)
 		return weighted
@@ -257,7 +263,20 @@ class Network(nn.Module):
 			output_list.append(second_layer)
 		return torch.stack(output_list)
 			
-		
+def analyze_graph(y: Tensor):
+	'''
+	analyzes the graph function of y
+	'''
+	print(y.grad_fn)
+	n = y.grad_fn
+	while len(n.next_functions) !=0:
+		print(n.next_functions)
+		n = n.next_functions[0][0]
+		if n:
+			continue
+		else:
+			break
+	print(n)
 	
 			
 			

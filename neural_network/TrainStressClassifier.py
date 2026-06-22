@@ -19,24 +19,37 @@ def train(network: Network , input: list, gold: list, features: dict):
 	
 	'''
 	error_history = []
-	optim = torch.optim.SGD(network.parameters(), lr=0.001,  momentum=1)
-	N = len(input)
+	optim = torch.optim.SGD(network.parameters(), lr=0.0001,  momentum=1)
+	path = Path(f'{input}/meta.json')
+	meta = json.load(path.open(mode='r'))
+	N = meta['size']
+	print('randomly sampling from', N)
+	sample_analysis(N, input, gold)
+	print(meta.keys())
+	print('syllable 2 size', meta['syllable_2']['size'])
+	print('syllable 3 size', meta['syllable_3']['size'])
+	print('syllable 4 size', meta['syllable_4']['size'])
 	epoch = 100
 	while epoch > 0:
 		optim.zero_grad()
 		error = 0
 		n = torch.randint(N, (20,))
 		for i in n:
-			x, y = torch.tensor(input[i][-1]), torch.tensor(gold[i][-1])
-			syll = input[i][0]
-			index = input[i][1]
+			y = torch.tensor(gold[i][-1])
+			syll = gold[i][0]
+			index = gold[i][1]
+			xpath = Path(f'{input}/{i}_{syll}_{index}.json')
+			print('reading file', xpath)
+			x = torch.tensor(json.load(xpath.open(mode='r')))
 			f = torch.tensor(filter(features, syll, index))
-			print(f'passing random word {i} to the network', x.shape, y.shape, f.shape)
 			y_hat = network.forward(x, f)
 			print('forward pass complete')
+			print(y_hat, 'gold', y)
 			error += compute_loss(y_hat, y)
 		print('batch error', error)
 		error_history.append(error.item())
+		print("error analysis before backpropagation")
+		#analyze_graph(error.grad_fn)
 		print('backpropagating the error')
 		error.backward()
 		print('updating the parameters')
@@ -47,10 +60,50 @@ def train(network: Network , input: list, gold: list, features: dict):
 	state_dict = network.state_dict(keep_vars = True)
 	for key, value in state_dict.items():
 		state_dict[key] = value.tolist()
-	path = Path('model.json')
+	path = Path('neural_network/model.json')
 	path.touch()
 	json.dump(state_dict, path.open(mode='w'))
-	print('error history', error_history)
+	print('error history', error_history[-10:])
+
+def sample_analysis(N: int, input:str, gold:list):
+	'''
+	randomly samples classes and analyzes the distribution
+	'''
+	n = torch.randint(N, (1000,))
+	d = {1:0, 2:0, 3:0, 4:0}
+	k = {2:0, 3:0, 4:0}
+	for i in n:
+		value = gold[i]
+		syll = value[0]
+		k[syll] +=1
+		location = value[-1]
+		for j in range(syll):
+			if location[j] == 1:
+				d[j+1] +=1
+	distribution = []
+	distributionw = []
+	for key, value in d.items():	
+		distribution.append(value / 1000)
+	for key, value in k.items():
+		distributionw.append(value / 1000)
+	print('distribution obtained over location classes')
+	print(distribution)
+	print('distribution obtained over syllable classes')
+	print(distributionw)
+				
+		
+	
+	
+def analyze_graph(y: Tensor):
+	'''
+	analyzes the graph function of y
+	'''
+	if y == None:
+		return
+	print(y.next_functions)
+	for f, k in y.next_functions:
+		analyze_graph(f)
+	
 	
 def filter(features:dict, syll: int, i:int):
 	'''
@@ -58,7 +111,7 @@ def filter(features:dict, syll: int, i:int):
 	'''
 	f = []
 	for feature in features.keys():
-		f.append(features[feature][f'syllable_{syll}'][i])
+		f.append(features[f'{feature}'][f'syllable_{syll}'][f'{i}'])
 	return f
 		
 def compute_loss(y_hat: Tensor, y: Tensor):
@@ -87,10 +140,9 @@ def read_in_data():
 	'''
 	reads in the training input and gold data from the current directory, also reads in features
 	'''
-	input_path = Path('data/vectors/train/input.json')
+	input = 'data/vectors/train/input'
 	gold_path = Path('data/vectors/train/gold.json')
 	feature_path = Path('data/vectors/features/train/input.json')
-	input = json.load(input_path.open(mode='r'))
 	gold = json.load(gold_path.open(mode='r'))
 	features = json.load(feature_path.open(mode='r'))
 	
@@ -117,9 +169,8 @@ if __name__ == '__main__':
 		network.load_state_dict(model_parameters)
 	print('reading in training data')
 	input, gold, features = read_in_data()
-	print('input shape', len(input), input[:10])
-	print('gold shape', len(gold) gold[:10])
-	print('features shape', features.keys(), features[0].keys(),features[0]['syllable_4'].keys())
+	print('input', input)
+	print('gold shape', len(gold), gold[:10])
 	train(network, input, gold, features)
 	
 	

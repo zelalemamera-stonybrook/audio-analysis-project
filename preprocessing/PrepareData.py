@@ -234,25 +234,25 @@ def balance_data():
 	data_3 = balance_class(data_3)
 	data_4 = balance_class(data_4)
 	
-	majority = max(len(data_2), len(data_3), len(data_4))
-	print('balancing across every class, majority class has', majority)
+	#majority = max(len(data_2), len(data_3), len(data_4))
+	#print('balancing across every class, majority class has', majority)
 	
-	print('oversampling', majority - len(data_2), 'from data_2 with', len(data_2))
-	remainder = data_2.sample(n = majority - len(data_2))
+	#print('oversampling', majority - len(data_2), 'from data_2 with', len(data_2))
+	#remainder = data_2.sample(n = majority - len(data_2))
 	subprocess.run(['rm', 'data/data_2/train/train_balanced.csv'])
-	data_2 = pd.concat([data_2, remainder])
+	#data_2 = pd.concat([data_2, remainder])
 	data_2.to_csv('data/data_2/train/train_balanced.csv')
 	
-	print('oversampling', majority - len(data_3), 'from data_3 with', len(data_3))
-	remainder = data_3.sample(n = majority - len(data_3))
+	#print('oversampling', majority - len(data_3), 'from data_3 with', len(data_3))
+	#remainder = data_3.sample(n = majority - len(data_3))
 	subprocess.run(['rm', 'data/data_3/train/train_balanced.csv'])
-	data_3 = pd.concat([data_3, remainder])
+	#data_3 = pd.concat([data_3, remainder])
 	data_3.to_csv('data/data_3/train/train_balanced.csv')
 	
-	print('oversampling', majority - len(data_4), 'from data_4 with', len(data_4))
-	remainder = data_4.sample(n = majority - len(data_4), replace=True)
+	#print('oversampling', majority - len(data_4), 'from data_4 with', len(data_4))
+	#remainder = data_4.sample(n = majority - len(data_4), replace=True)
 	subprocess.run(['rm', 'data/data_4/train/train_balanced.csv'])
-	data_4 = pd.concat([data_4, remainder])
+	#data_4 = pd.concat([data_4, remainder])
 	data_4.to_csv('data/data_4/train/train_balanced.csv')
 	
 
@@ -279,8 +279,14 @@ def prepare_data(batch: str):
 				f'data/data_3/{batch}',
 				f'data/data_4/{batch}'
 				]
+	total = 0
+	meta = {}
+	shutil.rmtree(f'data/vectors/{batch}/input')
+	os.mkdir(f'data/vectors/{batch}/input')
 	for n, path in enumerate(path_list):
 		syl = n + 2
+		meta[f'syllable_{syl}'] = {}
+		meta[f'syllable_{syl}']['files'] = []
 		csv_path = ''
 		if batch == 'train':
 			csv_path = Path(f'{path}/{batch}_balanced.csv')
@@ -293,6 +299,7 @@ def prepare_data(batch: str):
 		
 		dataframe = pd.read_csv(csv_path)
 		dataframe = dataframe.set_index('Unnamed: 0')
+		sylcounter = 0
 		for i in dataframe.index:
 			word = []
 			for j in range(syl):
@@ -305,14 +312,18 @@ def prepare_data(batch: str):
 				print('shape of audio signal', audio.shape)
 				padded_audio = pad(audio[0], 30000)
 				padded_word.append(padded_audio.tolist())
-			input_list.append([syl, i, padded_word])
+			input = Path(f'data/vectors/{batch}/input/{total}_{syl}_{i}.json')
+			json.dump(padded_word, input.open(mode='w'))
+			print('writing input to directory', input)
 			gold_list.append([syl, i, binarize(extract(dataframe['stress'][i]), len(word))])
+			meta[f'syllable_{syl}']['files'].append([total, syl, i])
+			total += 1
 			print('gold value obtained', gold_list[-1])
-	shutil.rmtree(f'data/vectors/{batch}')
-	os.mkdir(f'data/vectors/{batch}')
-	input = Path(f'data/vectors/{batch}/input.json')
-	print('writing input to directory', input)
-	json.dump(input_list, input.open(mode='w'))
+			sylcounter +=1
+		meta[f'syllable_{syl}']['size'] = sylcounter
+	path = Path(f'data/vectors/{batch}/input/meta.json')
+	meta['size'] = total
+	json.dump(meta, path.open(mode='w'))
 	gold = Path(f'data/vectors/{batch}/gold.json')
 	print('writing gold to directory', gold)
 	json.dump(gold_list, gold.open(mode='w'))

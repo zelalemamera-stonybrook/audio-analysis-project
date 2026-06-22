@@ -14,35 +14,47 @@ def test(network: StressClassifier, input: list, gold: list, features: dict):
 	this is the main function of the program. we pass the input words once through the network, and evaluate the results.
 	'''
 	
-	size_list  = count_syllable_sizes(input)
-	two_data, three_data, four_data = split_by_syllable(input, gold, features, size_list)
-	evaluate(network, two_data)
-	evaluate(network, three_data)
-	evaluate(network, four_data)
+	#size_list  = count_syllable_sizes(input)
+	#two_index = [i for i in range(size_list[0])]
+	#three_index = [ i + size_list[0] for i in range(size_list[1])]
+	#four_index = [i + size_list[0] + size_list[1] for i in range(size_list[-1])]
+	#two_data, three_data, four_data = split_by_syllable(input, gold, features, size_list)
+	evaluate(network, input, 2, gold)
+	evaluate(network, input, 3, gold)
+	evaluate(network, input, 4, gold)
 	
 	
-def evaluate(netwok: StressClassifier, input_data: tuple):
+def evaluate(netwok: StressClassifier, input: str, syll: int, gold: list):
 	'''
 	passes, the input data through the network and uses the output to write an evaluation for the model performance
 	'''
 	print('evaluating model performance')
-	input, golds, features = input_data
+	#input, golds, features = input_data
 	output = []
 	attention_weights = []
-	for i, word in enumerate(input):
-		f = torch.Tensor(filter(features, word[1]))
-		x = torch.Tensor(word[-1])
+	gold_list = []
+	path = Path(f'{input}/meta.json')
+	meta = json.load(path.open(mode='r'))
+	files = meta[f'syllable_{syll}']['files']
+	for file in files:
+		print('received file', file)
+		i = file[-1]
+		n = file[0]
+		print('reading in gold value', gold[n])
+		gold_list.append(torch.tensor(gold[n][-1]))
+		f = torch.Tensor(filter(features, syll, i))
+		xpath = Path(f'{input}/{file[0]}_{file[1]}_{file[-1]}.json')
+		x = torch.Tensor(json.load(xpath.open(mode='r')))
 		print(f'sequentially passing word {i} to the network', x.shape, f.shape)
 		y_hat = network.forward(x, f)
 		output.append(y_hat)
 		attention_weights.append(network.feature_weights)
-	cycles, syllables = network.cycles.item(), len(golds[0][-1])
-	gold = [ x[-1] for x in golds]
-	r = recall(output, gold)
-	p = precision(output, gold)
+	cycles = network.cycles.item()
+	r = recall(output, gold_list)
+	p = precision(output, gold_list)
 	f = fscore(r, p)
-	write_results(cycles, syllables, r, p, f, 'dev')
-	write_feature_weights(output, gold, attention_weights, 'dev')
+	write_results(cycles, syll, r, p, f, 'dev')
+	write_feature_weights(output, gold_list, attention_weights, 'dev')
 	
 def write_results(cycles:int, syllables: int, r: float, p:float, fs: float, batch: str):
 	'''
@@ -70,7 +82,7 @@ def write_feature_weights(output: list[Tensor], gold: list[Tensor], attention_we
 	syllable = len(gold[0])
 	path = Path(f'results/syllable_{syllable}/{batch}/feature_analysis.txt')
 	print('writing to file', path)
-	table_path = next(Path(f'wavefiles_syllabified/syllable_{syllable}/{batch}').glob('*.csv'))
+	table_path = Path(f'data/data_{syllable}/{batch}/{batch}.csv')
 	print('reading from table', table_path)
 	table = pd.read_csv(table_path)
 	ipa = table['ipa']
@@ -80,10 +92,10 @@ def write_feature_weights(output: list[Tensor], gold: list[Tensor], attention_we
 		for i, ipa in enumerate(ipa):
 			for j in range(syllable):
 				if j == 0:
-					line = f'{ipa}\t{j + 1}\t{to_list(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\t{attention_weights[i][j]}\n'
+					line = f'{ipa}\t{j + 1}\t{to_list(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\t{attention_weights}\n'
 					f.write(line)
 				else:
-					line = f'\t{j + 1}\t{to_list(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\t{attention_weights[i][j]}\n'
+					line = f'\t{j + 1}\t{to_list(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\t{attention_weights}\n'
 					f.write(line)
 					
 def to_list(t: Tensor):
@@ -143,13 +155,13 @@ def fscore(recall: float, precision: float):
 	f = round(2 * (recall * precision)/ (recall + precision), 2)
 	return f
 		
-def filter(features:list, i: int):
+def filter(features: dict, syll: int, i: int):
 	'''
 	returns the ith element of each list in features
 	'''
 	f = []
-	for words in features:
-		f.append(words[i])
+	for key, value in features.items():
+		f.append(value[f'syllable_{syll}'][f'{i}'])
 	return f
 		
 def split_by_syllable(input: list, gold: list, features: list, size_list: list[int]):
@@ -176,16 +188,14 @@ def count_syllable_sizes(input: list):
 	we count how many of them are there in each and return the result as a list
 	'''
 	size_list = []
-	n = 0
-	s = 2
-	new = sorted(input, key = lambda x: x[0])
-	for word in new:
-		if  word[0] == s:
-			n+=1
-		else:
-			size_list.append(n)
-			n = 1
-			s +=1
+	path = Path(f'{input}/meta.json')
+	meta = json.load(path.open(mode='r'))
+	two_size = meta['syllable_2']
+	three_size = meta['syllable_3']
+	four_size = meta['syllable_4']
+	size_list.append(two_size)
+	size_list.append(three_size)
+	size_list.append(four_size)
 	return size_list
 			
 
@@ -195,8 +205,8 @@ def read_in_data(batch: str):
 	reads in input and gold data from the current directory, also reads in features
 	'''
 	print('reading in testing data')
-	input_path, gold_path, feature_path = Path(f'data/vectors/{batch}/input.json'), Path(f'data/vectors/{batch}/gold.json'), Path(f'data/vectors/features/{batch}/input.json')
-	input, gold, features = json.load(input_path.open(mode='r')), json.load(gold_path.open(mode='r')), json.load(feature_path.open(mode='r'))
+	input_path, gold_path, feature_path = Path(f'data/vectors/{batch}/input'), Path(f'data/vectors/{batch}/gold.json'), Path(f'data/vectors/features/{batch}/input.json')
+	input, gold, features = input_path, json.load(gold_path.open(mode='r')), json.load(feature_path.open(mode='r'))
 
 	return input, gold, features
 
