@@ -19,41 +19,52 @@ def train(network: Network , input: list, gold: list, features: dict):
 	
 	'''
 	error_history = []
-	optim = torch.optim.SGD(network.parameters(), lr=0.0001,  momentum=1)
+	optim = torch.optim.SGD(network.parameters(), lr=0.001,  momentum=.5)
 	path = Path(f'{input}/meta.json')
 	meta = json.load(path.open(mode='r'))
-	N = meta['size']
-	print('randomly sampling from', N)
-	sample_analysis(N, input, gold)
-	print(meta.keys())
-	print('syllable 2 size', meta['syllable_2']['size'])
-	print('syllable 3 size', meta['syllable_3']['size'])
-	print('syllable 4 size', meta['syllable_4']['size'])
-	epoch = 100
+	N1 = meta['syllable_2']['size']
+	N2 = meta['syllable_3']['size']
+	N3 = meta['syllable_4']['size'] 
+	#print('randomly sampling from', 0, 'to', N1+ N2 + N3)
+	#sample_analysis(0, N1 + N2 + N3, input, gold)
+	#print(meta.keys())
+	#print('syllable 2 size', meta['syllable_2']['size'])
+	#print('syllable 3 size', meta['syllable_3']['size'])
+	#print('syllable 4 size', meta['syllable_4']['size'])
+	epoch = 220
+	network.feature_weights = []
 	while epoch > 0:
 		optim.zero_grad()
 		error = 0
-		n = torch.randint(N, (20,))
+		n = torch.randint(0, N1 + N2 + N3, (25,))
+		#n = [0, N1, N1 + N2]
 		for i in n:
 			y = torch.tensor(gold[i][-1])
 			syll = gold[i][0]
 			index = gold[i][1]
 			xpath = Path(f'{input}/{i}_{syll}_{index}.json')
 			print('reading file', xpath)
-			x = torch.tensor(json.load(xpath.open(mode='r')))
+			x = torch.tensor(json.load(xpath.open(mode='r'))) 
+			print('input vector statistics', 'length', x.shape, torch.min(x).item(), torch.max(x).item(), torch.mean(x).item(), 'dimensions', torch.count_nonzero(x, dim=1).tolist())
 			f = torch.tensor(filter(features, syll, index))
+			print('input feature statistics', f.shape, torch.min(f).item(), torch.max(f).item(), torch.mean(x).item())
 			y_hat = network.forward(x, f)
-			print('forward pass complete')
-			print(y_hat, 'gold', y)
+			#print('forward pass complete')
+			print( y_hat, 'gold', y)
 			error += compute_loss(y_hat, y)
 		print('batch error', error)
 		error_history.append(error.item())
-		print("error analysis before backpropagation")
+		#print("error analysis before backpropagation")
 		#analyze_graph(error.grad_fn)
+		print('epoch', epoch)
 		print('backpropagating the error')
+		#print(optim.state_dict())
 		error.backward()
+		#analyze_state_dict(network.state_dict())
+		#print(optim.state_dict())
 		print('updating the parameters')
 		optim.step()
+		#analyze_optimstate_dict(optim.state_dict())
 		epoch -= 1
 	network.cycles +=1
 	print('training complete. writing network parameters to directory.')
@@ -63,13 +74,32 @@ def train(network: Network , input: list, gold: list, features: dict):
 	path = Path('neural_network/model.json')
 	path.touch()
 	json.dump(state_dict, path.open(mode='w'))
-	print('error history', error_history[-10:])
+	print('error history', error_history)
 
-def sample_analysis(N: int, input:str, gold:list):
+
+def analyze_optimstate_dict(state_dict: dict):
+	'''
+	looks at model's previous gradients for any anomalies.
+	'''
+	for key, value in state_dict['state'].items():
+		gradient = value['momentum_buffer']
+		print(key, torch.min(gradient), torch.max(gradient), gradient.shape)
+	
+	
+def analyze_state_dict(state_dict: dict):
+	'''
+	looks at the models parameters for any anomalies.
+	'''
+	for key, value in state_dict.items():
+		print(key, value.shape)
+	
+	
+	
+def sample_analysis(N1: int, N: int, input:str, gold:list):
 	'''
 	randomly samples classes and analyzes the distribution
 	'''
-	n = torch.randint(N, (1000,))
+	n = torch.randint(N1, N, (1000,))
 	d = {1:0, 2:0, 3:0, 4:0}
 	k = {2:0, 3:0, 4:0}
 	for i in n:
@@ -124,7 +154,11 @@ def compute_loss(y_hat: Tensor, y: Tensor):
 	for n in y:
 		binary_list.append(binarize(int(n.item()), 2))
 	y = torch.Tensor(binary_list)
+	#print('distance to be computed between')
+	#print(y_hat)
+	#print(y)
 	distance = torch.add(y, y_hat, alpha=-1)
+	#print(distance, torch.linalg.vecdot(distance, distance))
 	error = 0.5 * (torch.linalg.vecdot(distance, distance)).sum()
 	return error
 	
@@ -170,7 +204,7 @@ if __name__ == '__main__':
 	print('reading in training data')
 	input, gold, features = read_in_data()
 	print('input', input)
-	print('gold shape', len(gold), gold[:10])
+	print('gold shape', len(gold))
 	train(network, input, gold, features)
 	
 	

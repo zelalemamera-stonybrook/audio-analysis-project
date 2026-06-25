@@ -76,6 +76,32 @@ def variance(vector_list: list):
 	return meanx2 - (torch.addcmul( t, meanx, meanx))
 	
 	
+def mean_pad(vec: Tensor, n:int):
+	'''
+	pads the input Tensor to a size of n, with the slight adjustment that the values used to pad the vector are its mean. 
+	'''
+	print('padding vector...')
+	print('input shape', vec.shape)
+	if vec.shape == torch.tensor([1])[0].shape:
+		vec = torch.tensor([vec])
+	diff = n - len(vec)
+	if diff <  0 :
+		print('cutting vector by', diff)
+		cut = - diff // 2
+		temp = vec[cut:-cut]
+		if diff % 2 == 1:
+			return temp[1:]
+		return temp
+	print('means to be added', diff)
+	mean = torch.mean(vec).item()
+	pad = torch.full((diff // 2,), mean)
+	first = pad.tolist()
+	first += vec.tolist()
+	first += pad.tolist()
+	if diff % 2 == 1:
+		first += [mean]
+	return torch.Tensor(first) * 10
+
 	
 def normalize_and_pad(output_list: list):
 	'''
@@ -100,7 +126,7 @@ def normalize_and_pad(output_list: list):
 	normalized = torch.addcdiv(t, (tensor - mn) , std)
 	embedded= []
 	for syll in normalized:
-		embedded.append(pad(syll, 990).tolist())
+		embedded.append(mean_pad(syll, 1000).tolist())
 	word_list = []
 	size = 0
 	for n in word_size:
@@ -200,7 +226,7 @@ def balance_class(data: DataFrame):
 	for i in counts.keys():
 		idata = data[data['stress'] == i]
 		print('oversampling ', majority - len(idata), 'from class', i)
-		remainder = data.sample(n = majority - len(idata))
+		remainder = idata.sample(n = majority - len(idata), replace=True)
 		remainders.append(remainder)
 	remainders.append(data)
 	value = pd.concat(remainders)
@@ -234,25 +260,25 @@ def balance_data():
 	data_3 = balance_class(data_3)
 	data_4 = balance_class(data_4)
 	
-	#majority = max(len(data_2), len(data_3), len(data_4))
-	#print('balancing across every class, majority class has', majority)
+	majority = max(len(data_2), len(data_3), len(data_4))
+	print('balancing across every class, majority class has', majority)
 	
-	#print('oversampling', majority - len(data_2), 'from data_2 with', len(data_2))
-	#remainder = data_2.sample(n = majority - len(data_2))
+	print('oversampling', majority - len(data_2), 'from data_2 with', len(data_2))
+	remainder = data_2.sample(n = majority - len(data_2))
 	subprocess.run(['rm', 'data/data_2/train/train_balanced.csv'])
-	#data_2 = pd.concat([data_2, remainder])
+	data_2 = pd.concat([data_2, remainder])
 	data_2.to_csv('data/data_2/train/train_balanced.csv')
 	
-	#print('oversampling', majority - len(data_3), 'from data_3 with', len(data_3))
-	#remainder = data_3.sample(n = majority - len(data_3))
+	print('oversampling', majority - len(data_3), 'from data_3 with', len(data_3))
+	remainder = data_3.sample(n = majority - len(data_3))
 	subprocess.run(['rm', 'data/data_3/train/train_balanced.csv'])
-	#data_3 = pd.concat([data_3, remainder])
+	data_3 = pd.concat([data_3, remainder])
 	data_3.to_csv('data/data_3/train/train_balanced.csv')
 	
-	#print('oversampling', majority - len(data_4), 'from data_4 with', len(data_4))
-	#remainder = data_4.sample(n = majority - len(data_4), replace=True)
+	print('oversampling', majority - len(data_4), 'from data_4 with', len(data_4))
+	remainder = data_4.sample(n = majority - len(data_4), replace=True)
 	subprocess.run(['rm', 'data/data_4/train/train_balanced.csv'])
-	#data_4 = pd.concat([data_4, remainder])
+	data_4 = pd.concat([data_4, remainder])
 	data_4.to_csv('data/data_4/train/train_balanced.csv')
 	
 

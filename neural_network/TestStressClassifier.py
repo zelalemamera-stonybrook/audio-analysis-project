@@ -24,18 +24,18 @@ def test(network: StressClassifier, input: list, gold: list, features: dict):
 	evaluate(network, input, 4, gold)
 	
 	
-def evaluate(netwok: StressClassifier, input: str, syll: int, gold: list):
+def evaluate(network: StressClassifier, input: str, syll: int, gold: list):
 	'''
 	passes, the input data through the network and uses the output to write an evaluation for the model performance
 	'''
 	print('evaluating model performance')
 	#input, golds, features = input_data
 	output = []
-	attention_weights = []
 	gold_list = []
 	path = Path(f'{input}/meta.json')
 	meta = json.load(path.open(mode='r'))
 	files = meta[f'syllable_{syll}']['files']
+	network.feature_weights = []
 	for file in files:
 		print('received file', file)
 		i = file[-1]
@@ -48,13 +48,12 @@ def evaluate(netwok: StressClassifier, input: str, syll: int, gold: list):
 		print(f'sequentially passing word {i} to the network', x.shape, f.shape)
 		y_hat = network.forward(x, f)
 		output.append(y_hat)
-		attention_weights.append(network.feature_weights)
 	cycles = network.cycles.item()
 	r = recall(output, gold_list)
 	p = precision(output, gold_list)
 	f = fscore(r, p)
 	write_results(cycles, syll, r, p, f, 'dev')
-	write_feature_weights(output, gold_list, attention_weights, 'dev')
+	write_feature_weights(output, gold_list, network.feature_weights, 'dev', input)
 	
 def write_results(cycles:int, syllables: int, r: float, p:float, fs: float, batch: str):
 	'''
@@ -74,28 +73,35 @@ def write_results(cycles:int, syllables: int, r: float, p:float, fs: float, batc
 			line = f'{cycles}\t{syllables}\t{r}\t{p}\t{fs}\n'
 			f.write(line)
 	
-def write_feature_weights(output: list[Tensor], gold: list[Tensor], attention_weights: list[list], batch: str):
+def write_feature_weights(output: list[Tensor], gold: list[Tensor], attention_weights: list[list], batch: str, input:str):
 	'''
 	writes a file containing the model's performance on each syllable and the weights that it assigned to each syllable.
 	'''
 	print('writing feature analysis')
 	syllable = len(gold[0])
+	path = Path(f'{input}/meta.json')
+	print('reading meta data from', path)
+	meta = json.load(path.open(mode='r'))
+	files = meta[f'syllable_{syllable}']['files']
+	print('files to be read', files)
 	path = Path(f'results/syllable_{syllable}/{batch}/feature_analysis.txt')
 	print('writing to file', path)
 	table_path = Path(f'data/data_{syllable}/{batch}/{batch}.csv')
 	print('reading from table', table_path)
 	table = pd.read_csv(table_path)
-	ipa = table['ipa']
+	table = table.set_index('Unnamed: 0')
 	with path.open('w') as f:
-		line = f'ipa\tsyllable\tprobability\tgold\tcorrect\tfeatures\n'
+		line = f'ipa\tsyllable\tprobability\tpredicted\tgold\tcorrect\tfeatures\n'
 		f.write(line)
-		for i, ipa in enumerate(ipa):
+		for i, file in enumerate(files):
+			index = file[-1]
+			ipa = table['ipa'][index]
 			for j in range(syllable):
 				if j == 0:
-					line = f'{ipa}\t{j + 1}\t{to_list(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\t{attention_weights}\n'
+					line = f'{ipa}\t{j + 1}\t{to_list(output[i][j])}\t{torch.argmax(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\t{[round(n, 3) for n in attention_weights[i][j]]}\n'
 					f.write(line)
 				else:
-					line = f'\t{j + 1}\t{to_list(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\t{attention_weights}\n'
+					line = f'\t{j + 1}\t{to_list(output[i][j])}\t{torch.argmax(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\t{[round(n, 3) for n in attention_weights[i][j]]}\n'
 					f.write(line)
 					
 def to_list(t: Tensor):
