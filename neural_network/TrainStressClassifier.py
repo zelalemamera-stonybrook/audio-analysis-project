@@ -7,10 +7,11 @@ import argparse
 from pathlib import Path
 import json
 import torch
+import torchaudio
 from torch import Tensor
 
 
-def train(network: Network , input: list, gold: list, features: dict):
+def train(model, network: Network , input: list, gold: list, features: dict):
 	'''
 	takes in the network, the input audio data and the targets, optimizes the model that best represents this target over the input data.
 	input shape: ( n, 30,000), where n is the number of syllables  for each sample
@@ -31,20 +32,30 @@ def train(network: Network , input: list, gold: list, features: dict):
 	#print('syllable 2 size', meta['syllable_2']['size'])
 	#print('syllable 3 size', meta['syllable_3']['size'])
 	#print('syllable 4 size', meta['syllable_4']['size'])
-	epoch = 220
+	epoch = 80
 	network.feature_weights = []
 	while epoch > 0:
 		optim.zero_grad()
 		error = 0
-		n = torch.randint(0, N1 + N2 + N3, (25,))
-		#n = [0, N1, N1 + N2]
+		n = torch.randint(0, N1, (25,))
+		#n = [ 0, N1 + N2]
 		for i in n:
 			y = torch.tensor(gold[i][-1])
 			syll = gold[i][0]
 			index = gold[i][1]
 			xpath = Path(f'{input}/{i}_{syll}_{index}.json')
 			print('reading file', xpath)
-			x = torch.tensor(json.load(xpath.open(mode='r'))) 
+	
+			waveform = torch.tensor(json.load(xpath.open(mode='r'))) 
+			vecs = []
+			model.eval()
+			with torch.no_grad():
+				vecs, _ = model.extract_features(waveform)
+			x = []
+			for vec in vecs[-1]:
+				x.append(vec.reshape(-1))
+			x = torch.stack(x).detach()
+			
 			print('input vector statistics', 'length', x.shape, torch.min(x).item(), torch.max(x).item(), torch.mean(x).item(), 'dimensions', torch.count_nonzero(x, dim=1).tolist())
 			f = torch.tensor(filter(features, syll, index))
 			print('input feature statistics', f.shape, torch.min(f).item(), torch.max(f).item(), torch.mean(x).item())
@@ -202,10 +213,12 @@ if __name__ == '__main__':
 			model_parameters[key] = torch.nn.parameter.Parameter(torch.tensor(value), requires_grad = True)
 		network = StressClassifier.Network()
 		network.load_state_dict(model_parameters)
+	bundle = torchaudio.pipelines.WAV2VEC2_BASE
+	model = bundle.get_model()
 	print('reading in training data')
 	input, gold, features = read_in_data()
 	print('input', input)
 	print('gold shape', len(gold))
-	train(network, input, gold, features)
+	train(model, network, input, gold, features)
 	
 	

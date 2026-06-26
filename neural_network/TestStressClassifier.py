@@ -6,10 +6,11 @@ import json
 from pathlib import Path
 import StressClassifier
 import torch
+import torchaudio
 from torch import Tensor
 import pandas as pd
 
-def test(network: StressClassifier, input: list, gold: list, features: dict):
+def test(model, network: StressClassifier, input: list, gold: list, features: dict):
 	'''
 	this is the main function of the program. we pass the input words once through the network, and evaluate the results.
 	'''
@@ -19,12 +20,12 @@ def test(network: StressClassifier, input: list, gold: list, features: dict):
 	#three_index = [ i + size_list[0] for i in range(size_list[1])]
 	#four_index = [i + size_list[0] + size_list[1] for i in range(size_list[-1])]
 	#two_data, three_data, four_data = split_by_syllable(input, gold, features, size_list)
-	evaluate(network, input, 2, gold)
-	evaluate(network, input, 3, gold)
-	evaluate(network, input, 4, gold)
+	evaluate(model, network, input, 2, gold)
+	evaluate(model, network, input, 3, gold)
+	evaluate(model, network, input, 4, gold)
 	
 	
-def evaluate(network: StressClassifier, input: str, syll: int, gold: list):
+def evaluate(model, network: StressClassifier, input: str, syll: int, gold: list):
 	'''
 	passes, the input data through the network and uses the output to write an evaluation for the model performance
 	'''
@@ -42,9 +43,19 @@ def evaluate(network: StressClassifier, input: str, syll: int, gold: list):
 		n = file[0]
 		print('reading in gold value', gold[n])
 		gold_list.append(torch.tensor(gold[n][-1]))
-		f = torch.Tensor(filter(features, syll, i))
 		xpath = Path(f'{input}/{file[0]}_{file[1]}_{file[-1]}.json')
-		x = torch.Tensor(json.load(xpath.open(mode='r')))
+		
+		waveform = torch.tensor(json.load(xpath.open(mode='r'))) 
+		vecs = []
+		model.eval()
+		with torch.no_grad():
+			vecs, _ = model.extract_features(waveform)
+		x = []
+		for vec in vecs[-1]:
+			x.append(vec.reshape(-1))
+		x = torch.stack(x).detach()
+		
+		f = torch.Tensor(filter(features, syll, i))
 		print(f'sequentially passing word {i} to the network', x.shape, f.shape)
 		y_hat = network.forward(x, f)
 		output.append(y_hat.detach())
@@ -234,7 +245,9 @@ def load_model():
 if __name__== '__main__':
 	network = load_model()
 	input, gold, features = read_in_data('dev')
-	test(network, input, gold, features)
+	bundle = torchaudio.pipelines.WAV2VEC2_BASE
+	model = bundle.get_model()
+	test(model, network, input, gold, features)
 	
 	
 	
