@@ -20,22 +20,22 @@ class Network(nn.Module):
 		
 		self.cycles = nn.parameter.Parameter(torch.tensor(float(0)), requires_grad = False) 
 		
-		self.conv1 = nn.parameter.Parameter((torch.rand((9,)) - 0.5) * 9, requires_grad = True)
+		self.conv1 = nn.parameter.Parameter((torch.rand((9,)) - 0.5) * 9, requires_grad = True) # stride = 5
 		self.conv1_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
 		
-		self.conv2 = nn.parameter.Parameter((torch.rand((5,)) - 0.5) * 5, requires_grad = True)
+		self.conv2 = nn.parameter.Parameter((torch.rand((5,)) - 0.5) * 5, requires_grad = True) # stride = 2
 		self.conv2_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
 		
-		self.conv3 = nn.parameter.Parameter((torch.rand((6,)) -0.5) * 6, requires_grad = True)
+		self.conv3 = nn.parameter.Parameter((torch.rand((6,)) -0.5) * 6, requires_grad = True) # stride = 2
 		self.conv3_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
 		
-		self.conv4 = nn.parameter.Parameter((torch.rand((4,)) -0.5) * 4, requires_grad = True)
+		self.conv4 = nn.parameter.Parameter((torch.rand((4,)) -0.5) * 4, requires_grad = True) # stride = 2
 		self.conv4_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
 		
-		self.conv5 = nn.parameter.Parameter((torch.rand((4,)) - 0.5) * 4, requires_grad = True)
-		self.conv5_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
+		self.conv5 = nn.parameter.Parameter((torch.rand((4,)) - 0.5) * 4, requires_grad = True) # stride = 2
+		self.conv5_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True) 
 		
-		self.conv6 = nn.parameter.Parameter((torch.rand((4,)) - 0.5) * 4, requires_grad = True)
+		self.conv6 = nn.parameter.Parameter((torch.rand((4,)) - 0.5) * 4, requires_grad = True) # stride = 2
 		self.conv6_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
 		
 		
@@ -438,7 +438,7 @@ if __name__ == '__main__':
 	print('gold shape', len(gold))
 	train_baseline(model, network, input, gold)
 	input, gold = read_in_data_test('dev')
-	#test_baseline(model, network, input, gold)
+
 	
 	
 	
