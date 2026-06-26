@@ -75,6 +75,7 @@ def train(network: Network , input: list, gold: list, features: dict):
 	path.touch()
 	json.dump(state_dict, path.open(mode='w'))
 	print('error history', error_history)
+	print(torch.min(torch.tensor(error_history)).item(), torch.max(torch.tensor(error_history)).item(), torch.mean(torch.tensor(error_history)).item())
 
 
 def analyze_optimstate_dict(state_dict: dict):

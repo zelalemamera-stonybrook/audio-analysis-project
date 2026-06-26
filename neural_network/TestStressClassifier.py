@@ -47,7 +47,7 @@ def evaluate(network: StressClassifier, input: str, syll: int, gold: list):
 		x = torch.Tensor(json.load(xpath.open(mode='r')))
 		print(f'sequentially passing word {i} to the network', x.shape, f.shape)
 		y_hat = network.forward(x, f)
-		output.append(y_hat)
+		output.append(y_hat.detach())
 	cycles = network.cycles.item()
 	r = recall(output, gold_list)
 	p = precision(output, gold_list)
