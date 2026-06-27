@@ -17,47 +17,47 @@ class Network(nn.Module):
 		print('initializing parameters')
 		self.cycles = nn.parameter.Parameter(torch.tensor(float(0)), requires_grad = False) 
 		
-		self.conv1 = nn.parameter.Parameter((torch.rand((9,)) - 0.5) * 9, requires_grad = True) # stride = 5
-		self.conv1_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
+		self.conv1 = nn.Conv1d(1, 3, (9,), stride = 5)
+		self.conv1.weight.data = nn.init.uniform_(self.conv1.weight.data, -9 * 0.5, 9 * 0.5)
 		
-		self.conv2 = nn.parameter.Parameter((torch.rand((5,)) - 0.5) * 5, requires_grad = True) # stride = 2
-		self.conv2_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
+		self.conv2 = nn.Conv1d(3,2, (5,), stride=2) 
+		self.conv2.weight.data = nn.init.uniform_(self.conv2.weight.data, -5 * 0.5, 5 * 0.5)
 		
-		self.conv3 = nn.parameter.Parameter((torch.rand((6,)) -0.5) * 6, requires_grad = True) # stride = 2
-		self.conv3_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
+		self.conv3 = nn.Conv1d(2, 1, (6,), stride=2)
+		self.conv3.weight.data = nn.init.uniform_(self.conv3.weight.data, -6 * 0.5, 6 * 0.5)
 		
-		self.conv4 = nn.parameter.Parameter((torch.rand((4,)) -0.5) * 4, requires_grad = True) # stride = 2
-		self.conv4_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
+		self.conv4 = nn.Conv1d(1,1,(4,), stride = 2)
+		self.conv4.weight.data = nn.init.uniform_(self.conv4.weight.data, -4 * 0.5, 4 * 0.5)
 		
-		self.conv5 = nn.parameter.Parameter((torch.rand((4,)) - 0.5) * 4, requires_grad = True) # stride = 2
-		self.conv5_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True) 
+		self.conv5 = nn.Conv1d(1,1, (4,), stride = 2)
+		self.conv5.weight.data = nn.init.uniform_(self.conv5.weight.data, -4 * 0.5, 4 * 0.5) 
 		
-		self.conv6 = nn.parameter.Parameter((torch.rand((4,)) - 0.5) * 4, requires_grad = True) # stride = 2
-		self.conv6_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
+		self.conv6 = nn.Conv1d(1,1, (4,), stride = 2)
+		self.conv6.weight.data = nn.init.uniform_(self.conv6.weight.data, -4 * 0.5, 4 * 0.5)	
 		
 	
-		self.attnlayer1 = nn.parameter.Parameter(torch.rand((1000, 1000 * 2)) - 0.5, requires_grad = True)
-		self.attnlayer1_bias = nn.parameter.Parameter(torch.rand((1000) ) - 0.5, requires_grad = True)
-		self.attnlayer2 = nn.parameter.Parameter(torch.rand((100,1000) )- 0.5, requires_grad = True)
-		self.attnlayer2_bias = nn.parameter.Parameter(torch.rand((100) ) - 0.5, requires_grad = True)
-		self.attnlayer3 = nn.parameter.Parameter((torch.rand((1,100)) - 0.5), requires_grad = True)
-		self.attnlayer3_bias = nn.parameter.Parameter(torch.rand((1,)) - 0.5, requires_grad = True)
+		self.attnlayer1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1000, 1000 * 2)),  - 0.5, 0.5))
+		self.attnlayer1_bias = nn.parameter.Parameter(torch.rand((1000)) - 0.5)
+		self.attnlayer2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100,1000) ), - 0.5, 0.5))
+		self.attnlayer2_bias = nn.parameter.Parameter(torch.rand((100) ) - 0.5)
+		self.attnlayer3 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1,100)), - 0.5 * 1.5, 0.5 * 1.5))
+		self.attnlayer3_bias = nn.parameter.Parameter(torch.rand((1,)) - 0.5)
 		self.feature_weights = []
 	
-		self.recurrent_left_in = nn.parameter.Parameter(torch.rand((500, 444) ) - 0.5, requires_grad = True)
-		self.recurrent_left_in_bias = nn.parameter.Parameter(torch.rand((500) ) - 0.5, requires_grad = True)
-		self.recurrent_left_hidden = nn.parameter.Parameter(torch.rand((500,500)) -0.5, requires_grad = True)
-		self.recurrent_left_hidden_bias = nn.parameter.Parameter(torch.rand((500)) - 0.5, requires_grad = True)
+		self.recurrent_left_in = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500, 444) ),  - 0.5, 0.5))
+		self.recurrent_left_in_bias = nn.parameter.Parameter(torch.rand((500) ))
+		self.recurrent_left_hidden = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500,500)), -0.5, 0.5))
+		self.recurrent_left_hidden_bias = nn.parameter.Parameter(torch.rand((500)))
 		
-		self.recurrent_right_in = nn.parameter.Parameter(torch.rand((500,444)) - 0.5, requires_grad = True)
-		self.recurrent_right_in_bias = nn.parameter.Parameter(torch.rand((500) ) - 0.5, requires_grad = True)
-		self.recurrent_right_hidden = nn.parameter.Parameter(torch.rand((500,500)) -0.5, requires_grad = True)
-		self.recurrent_right_hidden_bias = nn.parameter.Parameter(torch.rand((500)) - 0.5, requires_grad = True)
+		self.recurrent_right_in = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500,444)), - 0.5, 0.5))
+		self.recurrent_right_in_bias = nn.parameter.Parameter(torch.rand((500) ))
+		self.recurrent_right_hidden = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500,500)), -0.5, 0.5))
+		self.recurrent_right_hidden_bias = nn.parameter.Parameter(torch.rand((500)))
 		
-		self.recurrent_out1 = nn.parameter.Parameter((torch.rand((100, 1000)) - 0.5), requires_grad = True)
-		self.recurrent_out1_bias = nn.parameter.Parameter(torch.rand((100)) - 0.5, requires_grad = True)
-		self.recurrent_out2 = nn.parameter.Parameter((torch.rand((2, 100) ) - 0.5), requires_grad = True)
-		self.recurrent_out2_bias = nn.parameter.Parameter(torch.rand((2)) - 0.5, requires_grad = True)
+		self.recurrent_out1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100, 1000)), - 0.5, 0.5))
+		self.recurrent_out1_bias = nn.parameter.Parameter(torch.rand((100)))
+		self.recurrent_out2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((2, 100) ), - 0.5, 0.5))
+		self.recurrent_out2_bias = nn.parameter.Parameter(torch.rand((2,)))
 
 		self.tanh = nn.Tanh()
 		self.sigmoid = nn.Sigmoid()
@@ -101,20 +101,25 @@ class Network(nn.Module):
 		input shape: (30,000)
 		output shape: (990)
 		'''
-		conv_first = self.tanh(self.convolve(self.conv1, vec, self.conv1_bias, stride=5))
+		conv_first = self.tanh(self.conv1(vec.reshape((1, vec.shape[0]))))
 		#print(conv_first.shape, torch.min(conv_first).item(), torch.max(conv_first).item(), torch.mean(conv_first).item())
-		conv_second = self.tanh(self.convolve(self.conv2, conv_first,  self.conv2_bias, stride=2))
+		
+		conv_second = self.tanh(self.conv2(conv_first))
 		#print(conv_second.shape, torch.min(conv_second).item(), torch.max(conv_second).item(), torch.mean(conv_second).item())
-		conv_third = self.tanh(self.convolve(self.conv3, conv_second,  self.conv3_bias, stride=2))
+		
+		conv_third = self.tanh(self.conv3(conv_second)	)	
 		#print(conv_third.shape, torch.min(conv_third).item(), torch.max(conv_third).item(), torch.mean(conv_third).item())
-		conv_fourth = self.tanh(self.convolve(self.conv4, conv_third,  self.conv4_bias, stride=2))
+		
+		conv_fourth = self.tanh(self.conv4(conv_third))
 		#print(conv_fourth.shape, torch.min(conv_fourth).item(), torch.max(conv_fourth).item(), torch.mean(conv_fourth).item())
-		conv_fifth = self.tanh(self.convolve(self.conv5, conv_fourth,  self.conv5_bias, stride=2))
+		
+		conv_fifth = self.tanh(self.conv5(conv_fourth))
 		#print(conv_fifth.shape, torch.min(conv_fifth).item(), torch.max(conv_fifth).item(), torch.mean(conv_fifth).item())
-		conv_sixth = self.sigmoid(self.convolve(self.conv6, conv_fifth,  self.conv6_bias, stride=2))
+		
+		conv_sixth = self.sigmoid(self.conv6(conv_fifth))
 		#print(conv_sixth.shape, torch.min(conv_sixth).item(), torch.max(conv_sixth).item(), torch.mean(conv_sixth).item())
 		
-		return conv_sixth
+		return conv_sixth.reshape(-1)
 		
 	def convolve(self, conv: Tensor, input: Tensor, bias: Tensor,  stride=1):
 		'''
@@ -149,7 +154,7 @@ class Network(nn.Module):
 		print(attention_vector)
 		weighted = torch.matmul(attention_vector, feature_vecs)
 		#print(weighted.shape, torch.min(weighted).item(), torch.max(weighted).item(), torch.mean(weighted).item())
-		output = hidden + weighted
+		output = self.sigmoid(hidden + weighted)
 		return attention_vector, output
 		
 		

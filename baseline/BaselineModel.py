@@ -20,40 +20,40 @@ class Network(nn.Module):
 		
 		self.cycles = nn.parameter.Parameter(torch.tensor(float(0)), requires_grad = False) 
 		
-		self.conv1 = nn.parameter.Parameter((torch.rand((9,)) - 0.5) * 9, requires_grad = True) # stride = 5
-		self.conv1_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
+		self.conv1 = nn.Conv1d(1, 3, (9,), stride = 5)
+		self.conv1.weight.data = nn.init.uniform_(self.conv1.weight.data, -9 * 0.5, 9 * 0.5)
 		
-		self.conv2 = nn.parameter.Parameter((torch.rand((5,)) - 0.5) * 5, requires_grad = True) # stride = 2
-		self.conv2_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
+		self.conv2 = nn.Conv1d(3,2, (5,), stride=2) 
+		self.conv2.weight.data = nn.init.uniform_(self.conv2.weight.data, -5 * 0.5, 5 * 0.5)
 		
-		self.conv3 = nn.parameter.Parameter((torch.rand((6,)) -0.5) * 6, requires_grad = True) # stride = 2
-		self.conv3_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
+		self.conv3 = nn.Conv1d(2, 1, (6,), stride=2)
+		self.conv3.weight.data = nn.init.uniform_(self.conv3.weight.data, -6 * 0.5, 6 * 0.5)
 		
-		self.conv4 = nn.parameter.Parameter((torch.rand((4,)) -0.5) * 4, requires_grad = True) # stride = 2
-		self.conv4_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
+		self.conv4 = nn.Conv1d(1,1,(4,), stride = 2)
+		self.conv4.weight.data = nn.init.uniform_(self.conv4.weight.data, -4 * 0.5, 4 * 0.5)
 		
-		self.conv5 = nn.parameter.Parameter((torch.rand((4,)) - 0.5) * 4, requires_grad = True) # stride = 2
-		self.conv5_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True) 
+		self.conv5 = nn.Conv1d(1,1, (4,), stride = 2)
+		self.conv5.weight.data = nn.init.uniform_(self.conv5.weight.data, -4 * 0.5, 4 * 0.5) 
 		
-		self.conv6 = nn.parameter.Parameter((torch.rand((4,)) - 0.5) * 4, requires_grad = True) # stride = 2
-		self.conv6_bias = nn.parameter.Parameter(torch.rand((1,)), requires_grad = True)
+		self.conv6 = nn.Conv1d(1,1, (4,), stride = 2)
+		self.conv6.weight.data = nn.init.uniform_(self.conv6.weight.data, -4 * 0.5, 4 * 0.5)
 		
 		
-		self.left_rnn_in = nn.parameter.Parameter(torch.rand((500,444)) - 0.5, requires_grad = True)
-		self.left_rnn_in_bias = nn.parameter.Parameter(torch.rand((500,)), requires_grad = True)
-		self.left_rnn_hidden = nn.parameter.Parameter(torch.rand((500,500)) - 0.5, requires_grad = True)
-		self.left_rnn_hidden_bias = nn.parameter.Parameter(torch.rand((500,)), requires_grad = True)
+		self.left_rnn_in = nn.parameter.Parameter(torch.rand((500,444)) - 0.5)
+		self.left_rnn_in_bias = nn.parameter.Parameter(torch.rand((500,)))
+		self.left_rnn_hidden = nn.parameter.Parameter(torch.rand((500,500)) - 0.5)
+		self.left_rnn_hidden_bias = nn.parameter.Parameter(torch.rand((500,)))
 	
-		self.right_rnn_in = nn.parameter.Parameter(torch.rand((500,444)) - 0.5, requires_grad = True)
-		self.right_rnn_in_bias = nn.parameter.Parameter(torch.rand((500,)), requires_grad = True)
-		self.right_rnn_hidden = nn.parameter.Parameter(torch.rand((500,500)) - 0.5, requires_grad = True)
-		self.right_rnn_hidden_bias = nn.parameter.Parameter(torch.rand((500,)), requires_grad = True)
+		self.right_rnn_in = nn.parameter.Parameter(torch.rand((500,444)) - 0.5)
+		self.right_rnn_in_bias = nn.parameter.Parameter(torch.rand((500,)))
+		self.right_rnn_hidden = nn.parameter.Parameter(torch.rand((500,500)) - 0.5)
+		self.right_rnn_hidden_bias = nn.parameter.Parameter(torch.rand((500,)))
 	
-		self.output1 = nn.parameter.Parameter(torch.rand((500, 1000)) - 0.5, requires_grad = True)
-		self.output1_bias = nn.parameter.Parameter(torch.rand((500,)), requires_grad = True)
+		self.output1 = nn.parameter.Parameter(torch.rand((500, 1000)) - 0.5)
+		self.output1_bias = nn.parameter.Parameter(torch.rand((500,)))
 		
-		self.output2 = nn.parameter.Parameter(torch.rand((2, 500)) - 0.5, requires_grad = True)
-		self.output2_bias = nn.parameter.Parameter(torch.rand((2,)), requires_grad = True)
+		self.output2 = nn.parameter.Parameter(torch.rand((2, 500)) - 0.5)
+		self.output2_bias = nn.parameter.Parameter(torch.rand((2,)))
 		
 		self.sigmoid = nn.Sigmoid()
 		self.tanh = nn.Tanh()
@@ -73,21 +73,25 @@ class Network(nn.Module):
 		'''
 		passes vec through two convolution layers as specified and returns the result
 		'''
-		conv_first = self.tanh(self.convolve(self.conv1, vec, self.conv1_bias, stride=5))
+		conv_first = self.tanh(self.conv1(vec.reshape((1, vec.shape[0]))))
 		#print(conv_first.shape, torch.min(conv_first).item(), torch.max(conv_first).item(), torch.mean(conv_first).item())
-		conv_second = self.tanh(self.convolve(self.conv2, conv_first,  self.conv2_bias, stride=2))
+		
+		conv_second = self.tanh(self.conv2(conv_first))
 		#print(conv_second.shape, torch.min(conv_second).item(), torch.max(conv_second).item(), torch.mean(conv_second).item())
-		conv_third = self.tanh(self.convolve(self.conv3, conv_second,  self.conv3_bias, stride=2))
+		
+		conv_third = self.tanh(self.conv3(conv_second)	)	
 		#print(conv_third.shape, torch.min(conv_third).item(), torch.max(conv_third).item(), torch.mean(conv_third).item())
-		conv_fourth = self.tanh(self.convolve(self.conv4, conv_third,  self.conv4_bias, stride=2))
+		
+		conv_fourth = self.tanh(self.conv4(conv_third))
 		#print(conv_fourth.shape, torch.min(conv_fourth).item(), torch.max(conv_fourth).item(), torch.mean(conv_fourth).item())
-		conv_fifth = self.tanh(self.convolve(self.conv5, conv_fourth,  self.conv5_bias, stride=2))
+		
+		conv_fifth = self.tanh(self.conv5(conv_fourth))
 		#print(conv_fifth.shape, torch.min(conv_fifth).item(), torch.max(conv_fifth).item(), torch.mean(conv_fifth).item())
-		conv_sixth = self.tanh(self.convolve(self.conv6, conv_fifth,  self.conv6_bias, stride=2))
+		
+		conv_sixth = self.sigmoid(self.conv6(conv_fifth))
 		#print(conv_sixth.shape, torch.min(conv_sixth).item(), torch.max(conv_sixth).item(), torch.mean(conv_sixth).item())
 		
-		return conv_sixth
-		
+		return conv_sixth.reshape(-1)
 		
 		
 	def convolve(self, conv: Tensor, input: Tensor, bias: Tensor,  stride=1):

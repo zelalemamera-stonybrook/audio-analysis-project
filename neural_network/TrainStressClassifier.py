@@ -20,7 +20,7 @@ def train(model, network: Network , input: list, gold: list, features: dict):
 	
 	'''
 	error_history = []
-	optim = torch.optim.SGD(network.parameters(), lr=0.001,  momentum=.5)
+	optim = torch.optim.SGD(network.parameters(), lr=0.005,  momentum=.5)
 	path = Path(f'{input}/meta.json')
 	meta = json.load(path.open(mode='r'))
 	N1 = meta['syllable_2']['size']
@@ -38,7 +38,7 @@ def train(model, network: Network , input: list, gold: list, features: dict):
 		optim.zero_grad()
 		error = 0
 		n = torch.randint(0, N1, (25,))
-		#n = [ 0, N1 + N2]
+		#n = [ 0]
 		for i in n:
 			y = torch.tensor(gold[i][-1])
 			syll = gold[i][0]

@@ -86,7 +86,6 @@ def write_feature_weights(output: list[Tensor], gold: list[Tensor], batch: str, 
 	print('reading meta data from', path)
 	meta = json.load(path.open(mode='r'))
 	files = meta[f'syllable_{syllable}']['files']
-	print('files to be read', files)
 	path = Path(f'baseline/results/syllable_{syllable}/{batch}/feature_analysis.txt')
 	print('writing to file', path)
 	table_path = Path(f'data/data_{syllable}/{batch}/{batch}.csv')
