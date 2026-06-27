@@ -49,10 +49,10 @@ class Network(nn.Module):
 		self.right_rnn_hidden = nn.parameter.Parameter(torch.rand((500,500)) - 0.5)
 		self.right_rnn_hidden_bias = nn.parameter.Parameter(torch.rand((500,)))
 	
-		self.output1 = nn.parameter.Parameter(torch.rand((500, 1000)) - 0.5)
-		self.output1_bias = nn.parameter.Parameter(torch.rand((500,)))
+		self.output1 = nn.parameter.Parameter(torch.rand((100, 1000)) - 0.5)
+		self.output1_bias = nn.parameter.Parameter(torch.rand((100,)))
 		
-		self.output2 = nn.parameter.Parameter(torch.rand((2, 500)) - 0.5)
+		self.output2 = nn.parameter.Parameter(torch.rand((2, 100)) - 0.5)
 		self.output2_bias = nn.parameter.Parameter(torch.rand((2,)))
 		
 		self.sigmoid = nn.Sigmoid()

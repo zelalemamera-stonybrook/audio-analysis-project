@@ -32,12 +32,12 @@ def train(model, network: Network , input: list, gold: list, features: dict):
 	#print('syllable 2 size', meta['syllable_2']['size'])
 	#print('syllable 3 size', meta['syllable_3']['size'])
 	#print('syllable 4 size', meta['syllable_4']['size'])
-	epoch = 80
+	epoch = 55
 	network.feature_weights = []
 	while epoch > 0:
 		optim.zero_grad()
 		error = 0
-		n = torch.randint(0, N1, (25,))
+		n = torch.randint(0, N1 + N2 + N3, (25,))
 		#n = [ 0]
 		for i in n:
 			y = torch.tensor(gold[i][-1])
