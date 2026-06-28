@@ -1,0 +1,2 @@
+cycles	syllables	recall	precision	fscore
+15.0	2	0.75	0.59	0.66

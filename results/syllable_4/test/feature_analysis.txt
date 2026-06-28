@@ -1,0 +1,17 @@
+ipa	syllable	probability	predicted	gold	correct	features
+ˈɪt.tu.laː.ta	1	[0.26, 0.74]	1	1.0	True
+	2	[0.97, 0.03]	0	0.0	True
+	3	[0.74, 0.26]	0	0.0	True
+	4	[0.99, 0.01]	0	0.0	True
+bɑtˤ.tˤɑˈnij.je	1	[0.98, 0.02]	0	0.0	True
+	2	[0.86, 0.14]	0	0.0	True
+	3	[0.11, 0.89]	1	1.0	True
+	4	[0.99, 0.01]	0	0.0	True
+qɪˈtˤɑʕˈɣaz.ze	1	[0.96, 0.04]	0	0.0	True
+	2	[0.25, 0.75]	1	1.0	True
+	3	[0.59, 0.41]	0	0.0	True
+	4	[0.97, 0.03]	0	0.0	True
+mar.waˈħij.je	1	[0.54, 0.46]	0	0.0	True
+	2	[0.99, 0.01]	0	0.0	True
+	3	[0.21, 0.79]	1	1.0	True
+	4	[0.95, 0.05]	0	0.0	True

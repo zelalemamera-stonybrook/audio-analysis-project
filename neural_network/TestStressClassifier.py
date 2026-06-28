@@ -9,8 +9,9 @@ import torch
 import torchaudio
 from torch import Tensor
 import pandas as pd
+import argparse
 
-def test(model, network: StressClassifier, input: list, gold: list, features: dict):
+def test(batch: str, model, network: StressClassifier, input: list, gold: list, features: dict):
 	'''
 	this is the main function of the program. we pass the input words once through the network, and evaluate the results.
 	'''
@@ -20,12 +21,12 @@ def test(model, network: StressClassifier, input: list, gold: list, features: di
 	#three_index = [ i + size_list[0] for i in range(size_list[1])]
 	#four_index = [i + size_list[0] + size_list[1] for i in range(size_list[-1])]
 	#two_data, three_data, four_data = split_by_syllable(input, gold, features, size_list)
-	evaluate(model, network, input, 2, gold)
-	evaluate(model, network, input, 3, gold)
-	evaluate(model, network, input, 4, gold)
+	evaluate(batch, model, network, input, 2, gold)
+	evaluate(batch, model, network, input, 3, gold)
+	evaluate(batch, model, network, input, 4, gold)
 	
 	
-def evaluate(model, network: StressClassifier, input: str, syll: int, gold: list):
+def evaluate(batch: str, model, network: StressClassifier, input: str, syll: int, gold: list):
 	'''
 	passes, the input data through the network and uses the output to write an evaluation for the model performance
 	'''
@@ -45,26 +46,50 @@ def evaluate(model, network: StressClassifier, input: str, syll: int, gold: list
 		gold_list.append(torch.tensor(gold[n][-1]))
 		xpath = Path(f'{input}/{file[0]}_{file[1]}_{file[-1]}.json')
 		
-		waveform = torch.tensor(json.load(xpath.open(mode='r'))) 
-		vecs = []
-		model.eval()
-		with torch.no_grad():
-			vecs, _ = model.extract_features(waveform)
-		x = []
-		for vec in vecs[-1]:
-			x.append(vec.reshape(-1))
-		x = torch.stack(x).detach()
+		#x = load_wav_to_vec(model, xpath)
 		
-		f = torch.Tensor(filter(features, syll, i))
-		print(f'sequentially passing word {i} to the network', x.shape, f.shape)
-		y_hat = network.forward(x, f)
+		f = filter(features, syll, i)
+		x = load_features(f)
+		print(f'sequentially passing word {i} to the network', x.shape)
+		
+		y_hat = network.forward(x)
+		
 		output.append(y_hat.detach())
 	cycles = network.cycles.item()
 	r = recall(output, gold_list)
 	p = precision(output, gold_list)
 	f = fscore(r, p)
-	write_results(cycles, syll, r, p, f, 'dev')
-	write_feature_weights(output, gold_list, network.feature_weights, 'dev', input)
+	write_results(cycles, syll, r, p, f, batch)
+	write_feature_weights(output, gold_list, network.feature_weights, batch, input)
+
+def load_features(f: list):
+	'''
+	takes the features in f and concatenates them by syllable, so we can use the feature imbedding of the whole word.
+	'''
+	output = []
+	syll = len(f[-1])
+	for i in range(syll):
+		vec = []
+		for feature in f:
+			vec += feature[i]
+		output.append(torch.tensor(vec))
+		#print(output[-1])
+	return torch.stack(output)
+
+def load_wav_to_vec(model, xpath: str):
+	'''
+	loads the wavtovec imbedding of x and returns it
+	'''
+	waveform = torch.tensor(json.load(xpath.open(mode='r'))) 
+	vecs = []
+	model.eval()
+	with torch.no_grad():
+		vecs, _ = model.extract_features(waveform)
+	x = []
+	for vec in vecs[-1]:
+		x.append(vec.reshape(-1))
+	x = torch.stack(x).detach()
+	return x
 	
 def write_results(cycles:int, syllables: int, r: float, p:float, fs: float, batch: str):
 	'''
@@ -108,10 +133,10 @@ def write_feature_weights(output: list[Tensor], gold: list[Tensor], attention_we
 			ipa = table['ipa'][index]
 			for j in range(syllable):
 				if j == 0:
-					line = f'{ipa}\t{j + 1}\t{to_list(output[i][j])}\t{torch.argmax(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\t{[round(n, 3) for n in attention_weights[i][j]]}\n'
+					line = f'{ipa}\t{j + 1}\t{to_list(output[i][j])}\t{torch.argmax(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\n'
 					f.write(line)
 				else:
-					line = f'\t{j + 1}\t{to_list(output[i][j])}\t{torch.argmax(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\t{[round(n, 3) for n in attention_weights[i][j]]}\n'
+					line = f'\t{j + 1}\t{to_list(output[i][j])}\t{torch.argmax(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\n'
 					f.write(line)
 					
 def to_list(t: Tensor):
@@ -230,6 +255,7 @@ def load_model():
 	'''
 	loads in the trained model parameters and initializes the network for testing. 
 	'''
+	
 	print('loading in model')
 	path = Path('neural_network/model.json')
 	state_dict = json.load(path.open(mode='r'))
@@ -242,11 +268,20 @@ def load_model():
 	return network
 
 if __name__== '__main__':
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-t', '--test', action = 'store_true', help='run on test batch instead of dev')
+	args = parser.parse_args()
+	batch = ''
+	if args.test:
+		batch = 'test'
+	else:
+		batch = 'dev'
+		
 	network = load_model()
-	input, gold, features = read_in_data('dev')
+	input, gold, features = read_in_data(batch)
 	bundle = torchaudio.pipelines.WAV2VEC2_BASE
 	model = bundle.get_model()
-	test(model, network, input, gold, features)
+	test(batch, model, network, input, gold, features)
 	
 	
 	

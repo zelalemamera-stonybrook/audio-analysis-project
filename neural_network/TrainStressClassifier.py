@@ -20,7 +20,7 @@ def train(model, network: Network , input: list, gold: list, features: dict):
 	
 	'''
 	error_history = []
-	optim = torch.optim.SGD(network.parameters(), lr=0.005,  momentum=.5)
+	optim = torch.optim.SGD(network.parameters(), lr=0.001,  momentum=0.5)
 	path = Path(f'{input}/meta.json')
 	meta = json.load(path.open(mode='r'))
 	N1 = meta['syllable_2']['size']
@@ -32,12 +32,12 @@ def train(model, network: Network , input: list, gold: list, features: dict):
 	#print('syllable 2 size', meta['syllable_2']['size'])
 	#print('syllable 3 size', meta['syllable_3']['size'])
 	#print('syllable 4 size', meta['syllable_4']['size'])
-	epoch = 80
+	epoch = 220
 	network.feature_weights = []
 	while epoch > 0:
 		optim.zero_grad()
 		error = 0
-		n = torch.randint(0, N1, (25,))
+		n = torch.randint(0, N1 + N2 + N3, (25,))
 		#n = [ 0]
 		for i in n:
 			y = torch.tensor(gold[i][-1])
@@ -45,21 +45,17 @@ def train(model, network: Network , input: list, gold: list, features: dict):
 			index = gold[i][1]
 			xpath = Path(f'{input}/{i}_{syll}_{index}.json')
 			print('reading file', xpath)
-	
-			waveform = torch.tensor(json.load(xpath.open(mode='r'))) 
-			vecs = []
-			model.eval()
-			with torch.no_grad():
-				vecs, _ = model.extract_features(waveform)
-			x = []
-			for vec in vecs[-1]:
-				x.append(vec.reshape(-1))
-			x = torch.stack(x).detach()
+			
+			#x = load_wav_to_vec(model, xpath)
+			
+			f = filter(features, syll, index)
+			x = load_features(f)
 			
 			print('input vector statistics', 'length', x.shape, torch.min(x).item(), torch.max(x).item(), torch.mean(x).item(), 'dimensions', torch.count_nonzero(x, dim=1).tolist())
-			f = torch.tensor(filter(features, syll, index))
-			print('input feature statistics', f.shape, torch.min(f).item(), torch.max(f).item(), torch.mean(x).item())
-			y_hat = network.forward(x, f)
+			#print('input feature statistics', f.shape, torch.min(f).item(), torch.max(f).item(), torch.mean(x).item())
+			
+			y_hat = network.forward(x)
+			
 			#print('forward pass complete')
 			print( y_hat, 'gold', y)
 			error += compute_loss(y_hat, y)
@@ -88,6 +84,35 @@ def train(model, network: Network , input: list, gold: list, features: dict):
 	print('error history', error_history)
 	print(torch.min(torch.tensor(error_history)).item(), torch.max(torch.tensor(error_history)).item(), torch.mean(torch.tensor(error_history)).item())
 
+def load_features(f: list):
+	'''
+	takes the features in f and concatenates them by syllable, so we can use the feature imbedding of the whole word.
+	'''
+	output = []
+	syll = len(f[-1])
+	for i in range(syll):
+		vec = []
+		for feature in f:
+			vec += feature[i]
+		output.append(torch.tensor(vec))
+		#print(output[-1])
+	return torch.stack(output)
+	
+
+def load_wav_to_vec(model, xpath: str):
+	'''
+	loads the wavtovec imbedding of x and returns it
+	'''
+	waveform = torch.tensor(json.load(xpath.open(mode='r'))) 
+	vecs = []
+	model.eval()
+	with torch.no_grad():
+		vecs, _ = model.extract_features(waveform)
+	x = []
+	for vec in vecs[-1]:
+		x.append(vec.reshape(-1))
+	x = torch.stack(x).detach()
+	return x
 
 def analyze_optimstate_dict(state_dict: dict):
 	'''
