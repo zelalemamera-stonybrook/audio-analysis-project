@@ -50,9 +50,10 @@ def evaluate(batch: str, model, network: StressClassifier, input: str, syll: int
 		
 		f = filter(features, syll, i)
 		x = load_features(f)
+		f = torch.tensor(f)
 		print(f'sequentially passing word {i} to the network', x.shape)
 		
-		y_hat = network.forward(x)
+		y_hat = network.forward(x, f)
 		
 		output.append(y_hat.detach())
 	cycles = network.cycles.item()
@@ -133,10 +134,10 @@ def write_feature_weights(output: list[Tensor], gold: list[Tensor], attention_we
 			ipa = table['ipa'][index]
 			for j in range(syllable):
 				if j == 0:
-					line = f'{ipa}\t{j + 1}\t{to_list(output[i][j])}\t{torch.argmax(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\n'
+					line = f'{ipa}\t{j + 1}\t{to_list(output[i][j])}\t{torch.argmax(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\t{[round(n, 3) for n in attention_weights[i][j]]}\n'
 					f.write(line)
 				else:
-					line = f'\t{j + 1}\t{to_list(output[i][j])}\t{torch.argmax(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\n'
+					line = f'\t{j + 1}\t{to_list(output[i][j])}\t{torch.argmax(output[i][j])}\t{gold[i][j]}\t{ gold[i][j] == torch.argmax(output[i][j])}\t{[round(n, 3) for n in attention_weights[i][j]]}\n'
 					f.write(line)
 					
 def to_list(t: Tensor):

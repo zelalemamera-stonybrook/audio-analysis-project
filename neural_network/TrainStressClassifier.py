@@ -51,10 +51,12 @@ def train(model, network: Network , input: list, gold: list, features: dict):
 			f = filter(features, syll, index)
 			x = load_features(f)
 			
-			print('input vector statistics', 'length', x.shape, torch.min(x).item(), torch.max(x).item(), torch.mean(x).item(), 'dimensions', torch.count_nonzero(x, dim=1).tolist())
-			#print('input feature statistics', f.shape, torch.min(f).item(), torch.max(f).item(), torch.mean(x).item())
+			f = torch.tensor(f)
 			
-			y_hat = network.forward(x)
+			print('input vector statistics', 'length', x.shape, torch.min(x).item(), torch.max(x).item(), torch.mean(x).item(), 'dimensions', torch.count_nonzero(x, dim=1).tolist())
+			print('input feature statistics', f.shape, torch.min(f).item(), torch.max(f).item(), torch.mean(x).item())
+			
+			y_hat = network.forward(x, f)
 			
 			#print('forward pass complete')
 			print( y_hat, 'gold', y)

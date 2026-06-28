@@ -36,9 +36,9 @@ class Network(nn.Module):
 		self.conv6.weight.data = nn.init.uniform_(self.conv6.weight.data, -4 * 0.5, 4 * 0.5)	
 		
 	
-		self.attnlayer1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1000, 1000 * 2)),  - 0.5, 0.5))
-		self.attnlayer1_bias = nn.parameter.Parameter(torch.rand((1000)) - 0.5)
-		self.attnlayer2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100,1000) ), - 0.5, 0.5))
+		self.attnlayer1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((200, 400 + 30)),  - 0.5, 0.5))
+		self.attnlayer1_bias = nn.parameter.Parameter(torch.rand((200)) - 0.5)
+		self.attnlayer2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100, 200) ), - 0.5, 0.5))
 		self.attnlayer2_bias = nn.parameter.Parameter(torch.rand((100) ) - 0.5)
 		self.attnlayer3 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1,100)), - 0.5 * 1.5, 0.5 * 1.5))
 		self.attnlayer3_bias = nn.parameter.Parameter(torch.rand((1,)) - 0.5)
@@ -54,7 +54,7 @@ class Network(nn.Module):
 		self.recurrent_right_hidden = nn.parameter.Parameter(nn.init.uniform_(torch.empty((200,200)), -0.5, 0.5))
 		self.recurrent_right_hidden_bias = nn.parameter.Parameter(torch.rand((200)))
 		
-		self.recurrent_out1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100, 400)), - 0.5, 0.5))
+		self.recurrent_out1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100, 430)), - 0.5, 0.5))
 		self.recurrent_out1_bias = nn.parameter.Parameter(torch.rand((100)))
 		self.recurrent_out2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((2, 100) ), - 0.5, 0.5))
 		self.recurrent_out2_bias = nn.parameter.Parameter(torch.rand((2,)))
@@ -63,7 +63,7 @@ class Network(nn.Module):
 		self.sigmoid = nn.Sigmoid()
 		self.softmax = nn.Softmax(dim=-1)
 					
-	def forward(self, word: Tensor):
+	def forward(self, word: Tensor, features: Tensor):
 		'''
 		passes the word once through the network, and returns the output. 
 		input shape: (n, 30)
@@ -81,7 +81,7 @@ class Network(nn.Module):
 			#analyze_graph(sound_vec_embedding[-1])
 		#print('starting bi-directional recurrent network')
 		'''
-		output = self.rnn_forward(word)
+		output = self.rnn_forward(word, features)
 		print('finished forward pass')
 		return output
 		
@@ -143,8 +143,8 @@ class Network(nn.Module):
 	def attend(self, hidden: Tensor, feature_vecs: Tensor):
 		'''
 		computes the attention score of each element in the list with respect to the other elements, then returns the weighted sum of the whole
-		input shape: (1000) + (1000) * 4
-		output shape: (1000)
+		input shape: (400) + (30) * 4
+		output shape: (400)
 		'''
 		#print('starting attention network')
 		weight_list = []
@@ -156,7 +156,7 @@ class Network(nn.Module):
 		print(attention_vector)
 		weighted = torch.matmul(attention_vector, feature_vecs)
 		#print(weighted.shape, torch.min(weighted).item(), torch.max(weighted).item(), torch.mean(weighted).item())
-		output = self.sigmoid(hidden + weighted)
+		output = torch.cat((hidden, weighted))
 		return attention_vector, output
 		
 		
@@ -164,7 +164,7 @@ class Network(nn.Module):
 	def attention_forward(self, attention_source: Tensor, attention_target: Tensor):
 		'''
 		computes the compatibility score of the source to the target
-		input shape: (1000 * 2)
+		input shape: (400 + 30)
 		output shape: (1)
 		'''
 		#print('attention forward begins')
@@ -178,7 +178,7 @@ class Network(nn.Module):
 		#print(third_layer)
 		return third_layer
 		
-	def rnn_forward(self, injected_list: Tensor):
+	def rnn_forward(self, injected_list: Tensor, features: Tensor):
 		'''
 		passes the list of feature injected and attention weighted tensors through one pass of a bi-directional reccurrent network, and returns the output sequence as a list of probability distributions over the two classes. 
 		input shape: (n, 30)
@@ -214,7 +214,7 @@ class Network(nn.Module):
 		full_context = []
 		for hidden1, hidden2 in zip(hidden_list, hidden_list2):
 			full = torch.cat((hidden1, hidden2))
-			print(full.shape, torch.min(full).item(), torch.max(full).item(), torch.mean(full).item())
+			#print(full.shape, torch.min(full).item(), torch.max(full).item(), torch.mean(full).item())
 			full_context.append(full)
 		output_list = []
 		#print('output layer')
@@ -222,13 +222,13 @@ class Network(nn.Module):
 		for i, hidden in enumerate(full_context):
 			#print('received hidden vector')
 			#print(hidden.shape, torch.min(hidden).item(), torch.max(hidden).item(), torch.mean(hidden).item())
-			#feature_vecs = self.filter(features, i)
-			#attention_vector, input = self.attend(hidden, feature_vecs)
-			#attention_list.append(attention_vector.tolist())
+			feature_vecs = self.filter(features, i)
+			attention_vector, input = self.attend(hidden, feature_vecs)
+			attention_list.append(attention_vector.tolist())
 			#print('weighted hidden vector')
 			#print(input.shape, torch.min(input).item(), torch.max(input).item(), torch.mean(input).item())
 			#print('prediction layer')
-			first_layer = self.sigmoid(torch.matmul(self.recurrent_out1, hidden) + self.recurrent_out1_bias)
+			first_layer = self.sigmoid(torch.matmul(self.recurrent_out1, input) + self.recurrent_out1_bias)
 			#print(first_layer.shape, torch.min(first_layer).item(), torch.max(first_layer).item(), torch.mean(first_layer).item())
 			second_layer = self.softmax(torch.matmul(self.recurrent_out2, first_layer) + self.recurrent_out2_bias)
 			output_list.append(second_layer)
