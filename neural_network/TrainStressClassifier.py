@@ -11,7 +11,7 @@ import torchaudio
 from torch import Tensor
 
 
-def train(model, network: Network , input: list, gold: list, features: dict):
+def train(model, network: Network , input: list, gold: list, features: dict, feature_list: list[str]):
 	'''
 	takes in the network, the input audio data and the targets, optimizes the model that best represents this target over the input data.
 	input shape: ( n, 30,000), where n is the number of syllables  for each sample
@@ -19,6 +19,7 @@ def train(model, network: Network , input: list, gold: list, features: dict):
 	output shape: none
 	
 	'''
+	
 	error_history = []
 	optim = torch.optim.SGD(network.parameters(), lr=0.001,  momentum=0.5)
 	path = Path(f'{input}/meta.json')
@@ -38,7 +39,7 @@ def train(model, network: Network , input: list, gold: list, features: dict):
 		optim.zero_grad()
 		error = 0
 		n = torch.randint(0, N1 + N2 + N3, (25,))
-		#n = [ 0]
+		#n = [ 0, N2, N1 + N2]
 		for i in n:
 			y = torch.tensor(gold[i][-1])
 			syll = gold[i][0]
@@ -48,8 +49,8 @@ def train(model, network: Network , input: list, gold: list, features: dict):
 			
 			#x = load_wav_to_vec(model, xpath)
 			
-			f = filter(features, syll, index)
-			x = load_features(f)
+			f = filter(features, syll, index, feature_list)
+			x = load_features(f, syll)
 			
 			f = torch.tensor(f)
 			
@@ -86,12 +87,11 @@ def train(model, network: Network , input: list, gold: list, features: dict):
 	print('error history', error_history)
 	print(torch.min(torch.tensor(error_history)).item(), torch.max(torch.tensor(error_history)).item(), torch.mean(torch.tensor(error_history)).item())
 
-def load_features(f: list):
+def load_features(f: list, syll:int):
 	'''
 	takes the features in f and concatenates them by syllable, so we can use the feature imbedding of the whole word.
 	'''
 	output = []
-	syll = len(f[-1])
 	for i in range(syll):
 		vec = []
 		for feature in f:
@@ -174,13 +174,16 @@ def analyze_graph(y: Tensor):
 		analyze_graph(f)
 	
 	
-def filter(features:dict, syll: int, i:int):
+def filter(features:dict, syll: int, i:int, feature_list: list[str]):
 	'''
 	each vector can be identified by its batch (which in this case is assumed to be train), syllable class, and index 
 	'''
 	f = []
-	for feature in features.keys():
-		f.append(features[f'{feature}'][f'syllable_{syll}'][f'{i}'])
+	for feature in feature_list:
+		word = []
+		for j in range(syll):
+			word.append(features[f'data_{syll}'][f'{i}'][f'{j}'][f'{feature}'])
+		f.append(word)
 	return f
 		
 def compute_loss(y_hat: Tensor, y: Tensor):
@@ -240,12 +243,13 @@ if __name__ == '__main__':
 			model_parameters[key] = torch.nn.parameter.Parameter(torch.tensor(value), requires_grad = True)
 		network = StressClassifier.Network()
 		network.load_state_dict(model_parameters)
+	feature_list = ['time(s)', 'intensity', 'F0', 'F1(Hz)', 'B1(Hz)', 'F2(Hz)', 'B2(Hz)', 'F3(Hz)', 'B3(Hz)', 'F4(Hz)', 'B4(Hz)', 'F5(Hz)', 'B5(Hz)']
 	bundle = torchaudio.pipelines.WAV2VEC2_BASE
 	model = bundle.get_model()
 	print('reading in training data')
 	input, gold, features = read_in_data()
 	print('input', input)
 	print('gold shape', len(gold))
-	train(model, network, input, gold, features)
+	train(model, network, input, gold, features, feature_list)
 	
 	

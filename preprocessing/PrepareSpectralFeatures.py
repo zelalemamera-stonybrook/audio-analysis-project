@@ -3,6 +3,7 @@ The following program loads in all of the generated spectral features for the so
 '''
 import pandas as pd
 from pandas import DataFrame
+import numpy as np
 import re
 import torch
 from torch import Tensor
@@ -21,25 +22,74 @@ def extract_number(filename: str):
     return int("".join(p.findall(filename)))
     
     
-def clean_tables(df_dict):
-    '''
-    drops all the nans from table, sorts them first by their file name index, then by their syllable location
-    '''
-    key_list = ['syllable_2', 'syllable_3', 'syllable_4']
-    key_list2 = ['train', 'test', 'dev']
-    for key in key_list:
-        for key2 in key_list2:
-            df_list = df_dict[key][key2]
-            new_list = []
-            for dataframe in df_list:
-                dataframe.dropna(inplace=True)
-                dataframe_key = [extract_number(string) for string in dataframe['fileName']]
-                dataframe['key'] = dataframe_key
-                dataframe.sort_values(by=['key', 'name'], inplace=True)
-                dataframe = set_index(dataframe)
-                new_list.append(dataframe.drop(columns=['key', 'fileName', 'name']))
-            df_dict[key][key2] = new_list
-    return df_dict
+def clean_tables():
+	'''
+	drops all the nans from table, sorts them first by their file name index, then by their syllable location
+	'''
+	classe = ['data_2', 'data_3', 'data_4']
+	batch = ['train', 'test', 'dev']
+	type = ['formant', 'pitch']
+	max = 0
+	
+	dictionary = {
+			'train':{ 'data_2': {}, 'data_3':{}, 'data_4':{}
+		}, 
+			'test':{'data_2':{}, 'data_3':{}, 'data_4':{}
+		}, 
+			'dev':{'data_2':{}, 'data_3':{}, 'data_4':{}
+		}
+		}
+	
+	for i, s in enumerate(classe):
+		syll = i + 2
+		for b in batch:
+			pathsource = Path(f'data/{s}/{b}/{b}.csv')
+			sourcetable = pd.read_csv(pathsource)
+			sourcetable = sourcetable.set_index('Unnamed: 0')
+			print('reading from table', pathsource)
+			for j in sourcetable.index:
+				dictionary[b][s][j] = {}
+				for k in range(syll):
+					dictionary[b][s][j][k] = {}
+					for t in type:
+						pathtarget = Path(f'data/{s}/{b}/features/{t}/file_{j}_syll{k + 1}.csv')
+						print('generating from file', pathtarget)
+						if pathtarget.exists():
+							targettable = pd.read_csv(pathtarget)
+							for c in targettable.columns:
+								if c in {'time(s)', 'intensity'}:
+									column = targettable[c]
+									column = column.replace('-undefined--', np.nan)
+									column = column.dropna()
+									column = column.astype('float32')
+									dictionary[b][s][j][k][c] = column.to_numpy().tolist()
+									print('added', c)
+									if len(column) > max:
+										max = len(targettable[c])
+									print(len(column))
+									continue
+								if c in {'none', 'Time'}:
+									print('ignored', c)
+									continue
+								column = targettable[c]
+								column = column.replace('--undefined--', np.nan)
+								column = column.dropna()
+								column = column.astype('float32')
+								if len(column) == 1:
+									column = [0]
+									dictionary[b][s][j][k][c] = column
+									continue
+								mean = column.mean()
+								std = column.std()
+								normal = (column - mean) / std
+								dictionary[b][s][j][k][c] = normal.to_numpy().tolist()
+								if len(normal) > max:
+									max = len(normal)
+								print('added', c)
+								print(len(normal))
+						else:
+							print('warning', pathtarget, 'does not exist')	
+	return max, dictionary
     
 def set_index(dataframe: DataFrame):
 	'''
@@ -68,8 +118,12 @@ def write_spectral_features(df_dict: dict):
 	input shape: dict[str:dict[str:list]]
 	output shape: [f1,..., fn] where each fi = [w1, ..., wm]
 	'''
+	classe = ['data_2', 'data_3', 'data_4']
+	batch = ['train', 'test', 'dev']
+	type = ['formant', 'pitch']
+	
 	new_dict = {'syllable_2':{}, 'syllable_3':{}, 'syllable_4':{}}
-	clean_dict = clean_tables(df_dict)
+	clean_dict = clean_tables()
 	batches= ['train', 'test', 'dev']
 	syllables = ['syllable_2', 'syllable_3', 'syllable_4']
 	for batch in batches:
@@ -108,118 +162,10 @@ def prepare_data():
 	'''
 	main function which prepares all of the spectral features and writes them as a json dictionary to the current directory.
 	'''
-	write_csvs()
-	
-	print('reading in feature tables')
-	train_formant_2_syll_table = pd.read_csv('data/data_2/train/features/formant/dur_formant.csv')
-	train_duration_2_syll_table = pd.concat([train_formant_2_syll_table['duration'], train_formant_2_syll_table['fileName'], train_formant_2_syll_table['name']], axis=1)
-	train_formant_2_syll_table.drop(columns='duration', inplace=True)
-	
-	train_intensity_2_syll_table = pd.read_csv('data/data_2/train/features/intensity/dur_intensity.csv')
-	train_intensity_2_syll_table.drop(columns=['duration','intensity1', 'intensity10'], inplace=True)
-	
-	train_pitch_2_syll_table = pd.read_csv('data/data_2/train/features/pitch/dur_pitch.csv')
-	train_pitch_2_syll_table.drop(columns='duration', inplace=True)
-
-	dev_formant_2_syll_table = pd.read_csv('data/data_2/dev/features/formant/dur_formant.csv')
-	dev_duration_2_syll_table = pd.concat([dev_formant_2_syll_table['duration'], dev_formant_2_syll_table['fileName'],dev_formant_2_syll_table['name']], axis=1)
-	dev_formant_2_syll_table.drop(columns='duration', inplace=True)
-	
-	dev_intensity_2_syll_table = pd.read_csv('data/data_2/dev/features/intensity/dur_intensity.csv')
-	dev_intensity_2_syll_table.drop(columns=['duration', 'intensity1', 'intensity10'], inplace=True)
-	
-	dev_pitch_2_syll_table = pd.read_csv('data/data_2/dev/features/pitch/dur_pitch.csv')
-	dev_pitch_2_syll_table.drop(columns='duration', inplace=True)
-
-	test_formant_2_syll_table = pd.read_csv('data/data_2/test/features/formant/dur_formant.csv')
-	test_duration_2_syll_table = pd.concat([test_formant_2_syll_table['duration'], test_formant_2_syll_table['fileName'],test_formant_2_syll_table['name']], axis=1)
-	test_formant_2_syll_table.drop(columns='duration', inplace=True)
-	
-	test_intensity_2_syll_table = pd.read_csv('data/data_2/test/features/intensity/dur_intensity.csv')
-	test_intensity_2_syll_table.drop(columns=['duration', 'intensity1', 'intensity10'], inplace=True)
-	
-	test_pitch_2_syll_table = pd.read_csv('data/data_2/test/features/pitch/dur_pitch.csv')
-	test_pitch_2_syll_table.drop(columns='duration', inplace=True)
-	
-	train_formant_3_syll_table = pd.read_csv('data/data_3/train/features/formant/dur_formant.csv')
-	train_duration_3_syll_table = pd.concat([train_formant_3_syll_table['duration'], train_formant_3_syll_table['fileName'], train_formant_3_syll_table['name']], axis=1)
-	train_formant_3_syll_table.drop(columns='duration', inplace=True)
-	
-	train_intensity_3_syll_table = pd.read_csv('data/data_3/train/features/intensity/dur_intensity.csv')
-	train_intensity_3_syll_table.drop(columns=['duration', 'intensity1', 'intensity10'], inplace=True)
-	
-	train_pitch_3_syll_table = pd.read_csv('data/data_3/train/features/pitch/dur_pitch.csv')
-	train_pitch_3_syll_table.drop(columns='duration', inplace=True)
-
-	dev_formant_3_syll_table = pd.read_csv('data/data_3/dev/features/formant/dur_formant.csv')
-	dev_duration_3_syll_table = pd.concat([dev_formant_3_syll_table['duration'],dev_formant_3_syll_table['fileName'],dev_formant_3_syll_table['name']], axis = 1)
-	dev_formant_3_syll_table.drop(columns='duration', inplace=True)
-	
-	dev_intensity_3_syll_table = pd.read_csv('data/data_3/dev/features/intensity/dur_intensity.csv')
-	dev_intensity_3_syll_table.drop(columns=['duration','intensity1', 'intensity10'], inplace=True)
-	
-	dev_pitch_3_syll_table = pd.read_csv('data/data_3/dev/features/pitch/dur_pitch.csv')
-	dev_pitch_3_syll_table.drop(columns='duration', inplace=True)
-	
-	test_formant_3_syll_table = pd.read_csv('data/data_3/test/features/formant/dur_formant.csv')
-	test_duration_3_syll_table = pd.concat([test_formant_3_syll_table['duration'],test_formant_3_syll_table['fileName'],test_formant_3_syll_table['name']], axis=1)
-	test_formant_3_syll_table.drop(columns='duration', inplace=True)
-	
-	test_intensity_3_syll_table = pd.read_csv('data/data_3/test/features/intensity/dur_intensity.csv')
-	test_intensity_3_syll_table.drop(columns=['duration','intensity1', 'intensity10'], inplace=True)
-	
-	test_pitch_3_syll_table = pd.read_csv('data/data_3/test/features/pitch/dur_pitch.csv')
-	test_pitch_3_syll_table.drop(columns='duration', inplace=True)
-	
-	train_formant_4_syll_table = pd.read_csv('data/data_4/train/features/formant/dur_formant.csv')
-	train_duration_4_syll_table = pd.concat([train_formant_4_syll_table['duration'],train_formant_4_syll_table['fileName'],train_formant_4_syll_table['name']], axis=1)
-	train_formant_4_syll_table.drop(columns='duration', inplace=True)
-	
-	train_intensity_4_syll_table = pd.read_csv('data/data_4/train/features/intensity/dur_intensity.csv')
-	train_intensity_4_syll_table.drop(columns=['duration','intensity1', 'intensity10'], inplace=True)
-	
-	train_pitch_4_syll_table = pd.read_csv('data/data_4/train/features/pitch/dur_pitch.csv')
-	train_pitch_4_syll_table.drop(columns='duration', inplace=True)
-
-	dev_formant_4_syll_table = pd.read_csv('data/data_4/dev/features/formant/dur_formant.csv')
-	dev_duration_4_syll_table = pd.concat([dev_formant_4_syll_table['duration'],dev_formant_4_syll_table['fileName'],dev_formant_4_syll_table['name']], axis=1)
-	dev_formant_4_syll_table.drop(columns='duration', inplace=True)
-	
-	dev_intensity_4_syll_table = pd.read_csv('data/data_4/dev/features/intensity/dur_intensity.csv')
-	dev_intensity_4_syll_table.drop(columns=['duration','intensity1', 'intensity10'], inplace=True)
-	
-	dev_pitch_4_syll_table = pd.read_csv('data/data_4/dev/features/pitch/dur_pitch.csv')
-	dev_pitch_4_syll_table.drop(columns='duration', inplace=True)
-	
-	test_formant_4_syll_table = pd.read_csv('data/data_4/test/features/formant/dur_formant.csv')
-	test_duration_4_syll_table = pd.concat([test_formant_4_syll_table['duration'],test_formant_4_syll_table['fileName'],test_formant_4_syll_table['name']], axis=1)
-	test_formant_4_syll_table.drop(columns='duration', inplace=True)
-	
-	test_intensity_4_syll_table = pd.read_csv('data/data_4/test/features/intensity/dur_intensity.csv')
-	test_intensity_4_syll_table.drop(columns=['duration','intensity1', 'intensity10'], inplace=True)
-	
-	test_pitch_4_syll_table = pd.read_csv('data/data_4/test/features/pitch/dur_pitch.csv')
-	test_pitch_4_syll_table.drop(columns='duration', inplace=True)
-	
-	df_dict = {
-          	 'syllable_2': {
-	 'train':[train_duration_2_syll_table, train_formant_2_syll_table, train_intensity_2_syll_table, train_pitch_2_syll_table],
-	 'dev':[dev_duration_2_syll_table, dev_formant_2_syll_table, dev_intensity_2_syll_table, dev_pitch_2_syll_table],
-	 'test':[test_duration_2_syll_table, test_formant_2_syll_table, test_intensity_2_syll_table, test_pitch_2_syll_table]
-	 },
-            	'syllable_3':{
-	'train':[train_duration_3_syll_table, train_formant_3_syll_table, train_intensity_3_syll_table, train_pitch_3_syll_table],
-	'dev':[dev_duration_3_syll_table, dev_formant_3_syll_table, dev_intensity_3_syll_table, dev_pitch_3_syll_table],
-	'test':[test_duration_3_syll_table, test_formant_3_syll_table, test_intensity_3_syll_table, test_pitch_3_syll_table]
-	},
-            	'syllable_4':{
-	'train':[train_duration_4_syll_table, train_formant_4_syll_table, train_intensity_4_syll_table, train_pitch_4_syll_table],
-	'dev':[dev_duration_4_syll_table, dev_formant_4_syll_table, dev_intensity_4_syll_table, dev_pitch_4_syll_table],
-	'test':[test_duration_4_syll_table, test_formant_4_syll_table, test_intensity_4_syll_table, test_pitch_4_syll_table]
-	}
-	}
-		
-	return write_spectral_features(df_dict)
+	print('preparing feature data')
+	max, dictionary = clean_tables()
+	print('prepared feature data')
+	return max, dictionary
 	
 	
 	

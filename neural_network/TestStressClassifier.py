@@ -11,7 +11,7 @@ from torch import Tensor
 import pandas as pd
 import argparse
 
-def test(batch: str, model, network: StressClassifier, input: list, gold: list, features: dict):
+def test(batch: str, model, network: StressClassifier, input: list, gold: list, features: dict, feature_list:list[str]):
 	'''
 	this is the main function of the program. we pass the input words once through the network, and evaluate the results.
 	'''
@@ -21,12 +21,12 @@ def test(batch: str, model, network: StressClassifier, input: list, gold: list, 
 	#three_index = [ i + size_list[0] for i in range(size_list[1])]
 	#four_index = [i + size_list[0] + size_list[1] for i in range(size_list[-1])]
 	#two_data, three_data, four_data = split_by_syllable(input, gold, features, size_list)
-	evaluate(batch, model, network, input, 2, gold)
-	evaluate(batch, model, network, input, 3, gold)
-	evaluate(batch, model, network, input, 4, gold)
+	evaluate(batch, model, network, input, 2, gold, feature_list)
+	evaluate(batch, model, network, input, 3, gold, feature_list)
+	evaluate(batch, model, network, input, 4, gold, feature_list)
 	
 	
-def evaluate(batch: str, model, network: StressClassifier, input: str, syll: int, gold: list):
+def evaluate(batch: str, model, network: StressClassifier, input: str, syll: int, gold: list, feature_list: list[str]):
 	'''
 	passes, the input data through the network and uses the output to write an evaluation for the model performance
 	'''
@@ -48,7 +48,7 @@ def evaluate(batch: str, model, network: StressClassifier, input: str, syll: int
 		
 		#x = load_wav_to_vec(model, xpath)
 		
-		f = filter(features, syll, i)
+		f = filter(features, syll, i, feature_list)
 		x = load_features(f)
 		f = torch.tensor(f)
 		print(f'sequentially passing word {i} to the network', x.shape)
@@ -197,13 +197,16 @@ def fscore(recall: float, precision: float):
 	f = round(2 * (recall * precision)/ (recall + precision), 2)
 	return f
 		
-def filter(features: dict, syll: int, i: int):
+def filter(features: dict, syll: int, i: int, feature_list:list[str]):
 	'''
 	returns the ith element of each list in features
 	'''
 	f = []
-	for key, value in features.items():
-		f.append(value[f'syllable_{syll}'][f'{i}'])
+	for feature in feature_list:
+		word = []
+		for j in range(syll):
+			word.append(features[f'data_{syll}'][f'{i}'][f'{j}'][f'{feature}'])
+		f.append(word)
 	return f
 		
 def split_by_syllable(input: list, gold: list, features: list, size_list: list[int]):
@@ -279,10 +282,11 @@ if __name__== '__main__':
 		batch = 'dev'
 		
 	network = load_model()
+	feature_list = ['time(s)', 'intensity', 'F0', 'F1(Hz)', 'B1(Hz)', 'F2(Hz)', 'B2(Hz)', 'F3(Hz)', 'B3(Hz)', 'F4(Hz)', 'B4(Hz)', 'F5(Hz)', 'B5(Hz)']
 	input, gold, features = read_in_data(batch)
 	bundle = torchaudio.pipelines.WAV2VEC2_BASE
 	model = bundle.get_model()
-	test(batch, model, network, input, gold, features)
+	test(batch, model, network, input, gold, features, feature_list)
 	
 	
 	

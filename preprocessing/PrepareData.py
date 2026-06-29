@@ -32,7 +32,6 @@ def pad(vec: Tensor, n:int):
 	input shape: (k,)
 	output shape: (n, )
 	'''
-	print('padding vector...')
 	print('input shape', vec.shape)
 	if vec.shape == torch.tensor([1])[0].shape:
 		vec = torch.tensor([vec])
@@ -51,7 +50,7 @@ def pad(vec: Tensor, n:int):
 	first += pad.tolist()
 	if diff % 2 == 1:
 		first += [0]
-	return torch.Tensor(first)
+	return first
 	
 def mean(vector_list: list):
 	'''
@@ -103,7 +102,7 @@ def mean_pad(vec: Tensor, n:int):
 	return torch.Tensor(first) * 10
 
 	
-def normalize_and_pad(output_list: list):
+def normalize_and_pad(data: dict, f: list, max: int):
 	'''
 	the list in question is a sequence of words. each word is a list of syllables, for whom we have extracted a feature. this feature needs to be normalized over the whole set of syllables.
 	then it is zero padded to 990
@@ -111,29 +110,16 @@ def normalize_and_pad(output_list: list):
 	output shape: input shape
 	the order of the sequence of words and syllables must be preserved.
 	'''
-	vector_list = []
-	word_size = []
-	for word in output_list:
-		word_size.append(len(word))
-	print('word sizes found', word_size)
-	for word in output_list:
-		for vec in word:
-			vector_list.append(vec)
-	tensor = torch.Tensor(vector_list)
-	mn = mean(tensor)
-	std = variance(tensor) ** 0.5
-	t = torch.zeros(tensor.shape)
-	normalized = torch.addcdiv(t, (tensor - mn) , std)
-	embedded= []
-	for syll in normalized:
-		embedded.append(pad(syll, 30).tolist())
-	word_list = []
-	size = 0
-	for n in word_size:
-		word_list.append(embedded[size: size + n])
-		print('appended word' , len(word_list[-1]))
-		size += n
-	return word_list
+	print('padding vectors')
+	for i, word in data.items():
+		for j, features in word.items():
+			for feature in f:
+				print('padding', feature)
+				if feature in features.keys():
+					vec = data[i][j][feature]
+					data[i][j][feature] = pad(torch.tensor(vec), max)
+				else:
+					data[i][j][feature] = torch.full((max,), 0).tolist()
 		
 	
 def reindex(word_list: list, batch: str, i: int, data_dict: dict):
@@ -154,46 +140,26 @@ def reindex(word_list: list, batch: str, i: int, data_dict: dict):
 	return returned_object
 		
 			
-def write_data(data_dict: dict):
+def write_data(data_dict: dict, max: int):
 	'''
 	data_dict contains all of the raw spectral features. This function collects the relevant batch for every feature, and normalizes over the whole set, embeds each into a size of 1000, then saves each of the batches as a list of vectors
 	input shape: dict
 	output shape: [ f1, f2, ..., fh] where fi = [ w1, ..., wm]
 	'''
-	syllable_list = ['syllable_2', 'syllable_3', 'syllable_4']
-	batch_list = ['train', 'test', 'dev']
-	number_of_features = len(data_dict['syllable_2']['train'].keys())
-	features_train = {}
-	features_test  = {}
-	features_dev = {}
-	for i in range(number_of_features):
-		output_list = []
-		batch_sizes = []
-		for batch in batch_list:
-			size = 0
-			for syllable in syllable_list:
-				word_dict = data_dict[syllable][batch][i]
-				word_tuple = sorted(word_dict.items(), key = lambda x: x[0])
-				word_list = [w[1] for w in word_tuple]
-				output_list += word_list
-				size += len(word_list)
-			batch_sizes.append(size)
-		print('batches found', batch_sizes)
-		embedded_output = normalize_and_pad(output_list)
-		train_size, test_size, dev_size = batch_sizes[0], batch_sizes[1], batch_sizes[-1]
-		train_list, test_list, dev_list = embedded_output[:train_size], embedded_output[train_size: train_size + test_size], embedded_output[train_size + test_size:]
-		train_list = reindex(train_list, 'train', i, data_dict)
-		test_list = reindex(test_list, 'test', i, data_dict)
-		dev_list = reindex(dev_list, 'dev', i, data_dict)
-		print('train size', train_size)
-		print('train features generated', len(train_list))
-		print('test size', test_size)
-		print('test features generated', len(test_list))
-		print('dev size', dev_size)
-		print('dev features generated', len(dev_list))
-		features_train[i] = train_list
-		features_test[i] = test_list
-		features_dev[i] = dev_list
+	
+	classe = ['data_2', 'data_3', 'data_4']
+	batch = ['train', 'test', 'dev']
+	type = ['formant', 'pitch']
+	features = ['time(s)', 'intensity', 'F0', 'F1(Hz)', 'B1(Hz)', 'F2(Hz)', 'B2(Hz)', 'F3(Hz)', 'B3(Hz)', 'F4(Hz)', 'B4(Hz)', 'F5(Hz)', 'B5(Hz)']
+	
+	for b in batch:
+		for i, s in enumerate(classe):
+			syll = i + 2
+			words = data_dict[b][s]
+			normalize_and_pad(words, features, max)
+	features_train = data_dict['train']
+	features_test = data_dict['test']
+	features_dev = data_dict['dev']
 	subprocess.run(['rm', 'data/vectors/features/train/input.json'])
 	path1 = Path('data/vectors/features/train/input.json')
 	subprocess.run(['rm', 'data/vectors/features/test/input.json'])
@@ -356,12 +322,12 @@ def prepare_data(batch: str):
 	
 	
 if __name__ == '__main__':
-	prepare_data('train')
-	prepare_data('test')
-	prepare_data('dev')
+	#prepare_data('train')
+	#prepare_data('test')
+	#prepare_data('dev')
 	
-	data_dict = PrepareSpectralFeatures.prepare_data()
-	write_data(data_dict)
+	max, data_dict = PrepareSpectralFeatures.prepare_data()
+	write_data(data_dict, max)
 			
 				
 			
