@@ -36,7 +36,7 @@ class Network(nn.Module):
 		self.conv6.weight.data = nn.init.uniform_(self.conv6.weight.data, -4 * 0.5, 4 * 0.5)	
 		
 	
-		self.attnlayer1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500, 1000 + 165)),  - 0.5, 0.5))
+		self.attnlayer1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500, 2000 + 165)),  - 0.5, 0.5))
 		self.attnlayer1_bias = nn.parameter.Parameter(torch.rand((500)) - 0.5)
 		self.attnlayer2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100, 500) ), - 0.5, 0.5))
 		self.attnlayer2_bias = nn.parameter.Parameter(torch.rand((100) ) - 0.5)
@@ -44,23 +44,23 @@ class Network(nn.Module):
 		self.attnlayer3_bias = nn.parameter.Parameter(torch.rand((1,)) - 0.5)
 		self.feature_weights = []
 	
-		self.recurrent_left_in = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500, 165 * 13) ),  - 0.5, 0.5))
-		self.recurrent_left_in_bias = nn.parameter.Parameter(torch.rand((500) ))
-		self.recurrent_left_hidden = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500,500)), -0.5, 0.5))
-		self.recurrent_left_hidden_bias = nn.parameter.Parameter(torch.rand((500)))
+		self.recurrent_left_in = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1000, 165 * 13) ),  - 0.5, 0.5))
+		self.recurrent_left_in_bias = nn.parameter.Parameter(torch.rand((1000) ))
+		self.recurrent_left_hidden = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1000,1000)), -0.5, 0.5))
+		self.recurrent_left_hidden_bias = nn.parameter.Parameter(torch.rand((1000)))
 		
-		self.recurrent_right_in = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500,165 * 13)), - 0.5, 0.5))
-		self.recurrent_right_in_bias = nn.parameter.Parameter(torch.rand((500) ))
-		self.recurrent_right_hidden = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500,500)), -0.5, 0.5))
-		self.recurrent_right_hidden_bias = nn.parameter.Parameter(torch.rand((500)))
+		self.recurrent_right_in = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1000,165 * 13)), - 0.5, 0.5))
+		self.recurrent_right_in_bias = nn.parameter.Parameter(torch.rand((1000) ))
+		self.recurrent_right_hidden = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1000,1000)), -0.5, 0.5))
+		self.recurrent_right_hidden_bias = nn.parameter.Parameter(torch.rand((1000)))
 		
-		self.recurrent_out1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500, 1000 + 165)), - 0.5, 0.5))
-		self.recurrent_out1_bias = nn.parameter.Parameter(torch.rand((500)))
-		self.recurrent_out2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100, 500) ), - 0.5, 0.5))
-		self.recurrent_out2_bias = nn.parameter.Parameter(torch.rand((100,)))
-		self.recurrent_out3 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((50, 100) ), - 0.5, 0.5))
-		self.recurrent_out3_bias = nn.parameter.Parameter(torch.rand((50,)))
-		self.recurrent_out4 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((2, 50) ), - 0.5, 0.5))
+		self.recurrent_out1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1000, 2000 + 165)), - 0.5, 0.5))
+		self.recurrent_out1_bias = nn.parameter.Parameter(torch.rand((1000)))
+		self.recurrent_out2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500, 1000) ), - 0.5, 0.5))
+		self.recurrent_out2_bias = nn.parameter.Parameter(torch.rand((500,)))
+		self.recurrent_out3 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100, 500) ), - 0.5, 0.5))
+		self.recurrent_out3_bias = nn.parameter.Parameter(torch.rand((100,)))
+		self.recurrent_out4 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((2, 100) ), - 0.5, 0.5))
 		self.recurrent_out4_bias = nn.parameter.Parameter(torch.rand((2,)))
 
 		self.tanh = nn.Tanh()

@@ -12,59 +12,42 @@ path = Path('./data/ipa_to_mfa.json')
 model_symbols = {}
 with path.open(mode='r') as f:
 		model_symbols = json.load(f)
-		
+
 def write_syllable_table():
 	'''
-	each table of the data contains a column for ipa, which has a sequence of phoemes that is broken up by a syllable boundary.  in order to 
-	return the location of this boundary, we need to know the translated sequence as used by mfa model, as these are the exact symbols used by the model to define intervals over the sound.
+	data contains a column for ipa, which has a sequence of phoemes that is broken up by a syllable marker.  in order to
+	return the location of this marker,  we need to know the translated sequence as used by mfa model, these are the exact symbols used by the model to define intervals over the sound.
 	'''
-	data_2 = pd.read_csv('./data/data_2.csv')
-	data_3 = pd.read_csv('./data/data_3.csv')
-	data_4 = pd.read_csv('./data/data_4.csv')
-	write_syllables_data_2(data_2)
-	write_syllables_data_3(data_3)
-	write_syllables_data_4(data_4)
-	
+	data = pd.read_csv('./data/table.csv')
+	data = data.set_index('Unnamed: 0')
+	write_syllables_data(data)
 
-def write_syllables_data_2(df: DataFrame):
+
+def write_syllables_data(df: DataFrame):
 	'''
-	writes the index location of all the syllables for each word in this two syllable dataframe at ./data/data_2/syllable_index.txt
+	writes the index location of all the syllables for each word in this dataframe at ./data/syllable_index.txt
 	'''
-	print('writing two syllable index')
-	path = Path('./data/data_2/syllable_index.txt')
+	print('writing syllable index')
+	path = Path('./data/syllable_index.txt')
 	with path.open(mode='w') as f:
-		f.write('filename\tsyll1\n')
+		f.write('id	class	1	2	3	4\n')
 		data = [(i, find_syllable_location(ipa)) for i, ipa in zip(df.index, df['ipa'])]
 		for i, syll_list in data:
-			syll1 = syll_list[-1]
-			f.write(f'file_{i}.TextGrid\t{syll1}\n')
-			
-def write_syllables_data_3(df: DataFrame):
-	'''
-	writes the index location of all the syllables for each word in this three syllable dataframe at ./data/data_3/syllable_index.txt
-	'''
-	path = Path('./data/data_3/syllable_index.txt')
-	with path.open(mode='w') as f:
-		f.write('filename\tsyll1\tsyll2\n')
-		data = [(i, find_syllable_location(ipa)) for i, ipa in zip(df.index, df['ipa'])]
-		for i, syll_list in data:
-			syll1 = syll_list[-2]
-			syll2 = syll_list[-1]
-			f.write(f'file_{i}.TextGrid\t{syll1}\t{syll2}\n')
-			
-def write_syllables_data_4(df: DataFrame):
-	'''
-	writes the index location of all the syllables for each word in this four syllable dataframe at ./data/data_4/syllable_index.txt
-	'''
-	path = Path('./data/data_4/syllable_index.txt')
-	with path.open(mode='w') as f:
-		f.write('filename\tsyll1\tsyll2\tsyll3\n')
-		data = [(i, find_syllable_location(ipa)) for i, ipa in zip(df.index, df['ipa'])]
-		for i, syll_list in data:
-			syll1 = syll_list[-3]
-			syll2 = syll_list[-2]
-			syll3 = syll_list[-1]
-			f.write(f'file_{i}.TextGrid\t{syll1}\t{syll2}\t{syll3}\n')
+			if len(syll_list) == 2:
+				syll1 = syll_list[-2]
+				syll2 = syll_list[-1]
+				f.write(f'{i}.TextGrid	2	{syll1}	{syll2}	0	0\n')
+			elif len(syll_list) == 3:
+				syll1 = syll_list[-3]
+				syll2 = syll_list[-2]
+				syll3 = syll_list[-1]
+				f.write(f'{i}.TextGrid	3	{syll1}	{syll2}	{syll3}	0\n')
+			elif len(syll_list) == 4:
+				syll1 = syll_list[-4]
+				syll2 = syll_list[-3]
+				syll3 = syll_list[-2]
+				syll4 = syll_list[-1]
+				f.write(f'{i}.TextGrid	4	{syll1}	{syll2}	{syll3}	{syll4}\n')
 
 def find_syllable_location(ipa: str):
 	'''
@@ -76,11 +59,11 @@ def find_syllable_location(ipa: str):
 	for syll in syllables:
 		model = map_to_mfa(syll)
 		counter_list.append(len(re.split(r'\s', model)) + counter_list[-1])
-	counter_list = counter_list[1:-1]
+	counter_list = counter_list[1:]
 	print('generated syllable indices', counter_list)
 	return counter_list
-	
-	
+
+
 def syllabify(ipa: str):
 	'''
 	returns all of syllables of this ipa as a list assuming it is broken up by the syllable marker and the stress marker.
@@ -104,8 +87,9 @@ def syllabify(ipa: str):
 def map_to_mfa(ipa: str):
 	'''
 	the raw ipa strings are not sutiatble for alignment before putting them into a specific format; any suprasegmentals need to be removed if they are not a part of mfa vocabulary,
-	additionaly, mfa strings are delimited by space, however the ipa provided does not come with space delimitation, this needs to be added with the additional comlplication of that any suprasegmatal sequences attatched to an 
-	ipa character should be considered a part of the same token. after this cleaning is applied, the ipa string is sent to the raw ipa to model symbols function to be trnasformed into an roughly equivalent sequence of an mfa phone string, 
+	additionaly, mfa strings are delimited by space, however the ipa provided does not come with space delimitation,
+	this needs to be added with the additional complication of that any suprasegmatal sequences attatched to an ipa character should be considered a part of the same token.
+	after this cleaning is applied, the ipa string is sent to the raw ipa to model symbols function to be transformed into an roughly equivalent sequence of an mfa phone string,
 	which can be used for alignment directly.
 	'''
 	print('mapping syllable', ipa, 'to model symbols')
@@ -129,22 +113,6 @@ def map_to_mfa(ipa: str):
 	mapped = " ".join(segmented_list)
 	print('mapping obtained', mapped)
 	return mapped
-    
-    
-    
+
 if __name__ == '__main__':
 	write_syllable_table()
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	

@@ -76,12 +76,12 @@ def clean_tables():
 								column = column.dropna()
 								column = column.astype('float32')
 								if len(column) == 1:
-									column = [0]
-									dictionary[b][s][j][k][c] = column
+									#column = [0]
+									dictionary[b][s][j][k][c] = column.to_numpy().tolist()
 									continue
 								mean = column.mean()
 								std = column.std()
-								normal = (column - mean) / std
+								normal = column
 								dictionary[b][s][j][k][c] = normal.to_numpy().tolist()
 								if len(normal) > max:
 									max = len(normal)

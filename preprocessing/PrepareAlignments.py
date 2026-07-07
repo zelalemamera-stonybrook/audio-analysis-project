@@ -1,8 +1,13 @@
 '''
-The following program prepares audio files for forced alignment. This is the first step of the data processing pipeline that feeds into the StressClassifier neural network. After this program runs, the relelant audio and text directories have been generated for the alignment. 
-We use montreal forced aligner to obtain the aligned corpus and proceed to the next step of the pipeline. The user is ultimately expected to generate the appropriate syllabifications via the Praat software. All of the data necessary to do this will be generated.
+The following program prepares audio files for forced alignment. This is the first step of the data processing pipeline that feeds into the StressClassifier neural network.
+After this program runs, the relelant audio and text directories have been generated for the alignment.
+We use montreal forced aligner to obtain the aligned corpus and proceed to the next step of the pipeline.
+The user is ultimately expected to generate the appropriate syllabifications via the Praat software. All of the data necessary to do this will be generated.
 '''
-
+import torch
+import torchaudio
+import torchcodec
+from torch import Tensor
 from pathlib import Path
 import json
 import re
@@ -19,23 +24,24 @@ with path.open(mode='r') as f:
 
 def prepare_alignments():
 	'''
-	the data is assumed to be written into exactly three tables. one containing two sullable data, another containing three syllable data, and lastly one contaiining four syllable data.
-	each table will be read from the subdirectory called data, null values will be dropped, tables will be split randomly into 80/10/10 protions representing the training, testing, and development samples respectively,
-	then columns are processed one by one for each sample; ipa text will be processed for generating index locations, and text column will be used to 
-	generate dictionaries for the alignment, audio paths will be checked for validity before they are batched for alignment. all of the audio files needed are assumed to be present somewhere in the current directory under the audio subfolder.
-	once the nessary data for alignment has been generated, the program is terminated. each batch should be subsequently aligned using Montreal Forced Aligner from the command line.
+	the data is assumed to be written into exactly one table. this table will be read from the data directory.
+	columns are processed as follows: the text column will be used to generate an arabic to ipa dictionary, as well as a text directory for the alignment.
+	the audio urls column will be checked for validity and used to generate an audio directory.
+	all of the audio files needed are assumed to be present somewhere in the current directory under the audio subfolder.
+	once the necessary data for alignment has been generated, the program is terminated. The text and audio directories generated from the table should be subsequently
+	aligned using Montreal Forced Aligner from the command line.
 	'''
-	print('reading in tables')
-	data_2 = pd.read_csv(Path('./data/data_2.csv'))
-	data_3 = pd.read_csv(Path('./data/data_3.csv'))
-	data_4 = pd.read_csv(Path('./data/data_4.csv'))
-	print('sucessfuly read tables')
-	data = {'data_2': data_2, 'data_3': data_3, 'data_4': data_4}
-	split = split_data(data)
-	generate_text(split)
-	generate_audio(split)
+	print('reading in table')
+	data = pd.read_csv(Path('./data/table.csv'))
+	data = data.drop(columns='Unnamed: 0')
+	print('sucessfuly read table')
+	data = {'data': data}
+
+	generate_text(data)
+	generate_audio(data)
 	generate_aligner_dictionary(data)
-	
+	data['data'].to_csv('data/table.csv')
+
 def split_data(data: dict):
 	'''
 	80/10/10 split
@@ -48,82 +54,93 @@ def split_data(data: dict):
 		test = remainder.sample(frac = .5)
 		dev = remainder.drop(list(test.index))
 		split[f'{key}'] = {}
-		
+
 		split[f'{key}']['train'] = train
 		trainpath = f'data/{key}/train/train.csv'
 		subprocess.run(['rm', trainpath])
 		print('saving to', trainpath)
 		train.to_csv(trainpath)
-		
+
 		split[f'{key}']['test'] = test
 		testpath = f'data/{key}/test/test.csv'
 		subprocess.run(['rm', testpath])
 		print('saving to', testpath)
 		test.to_csv(testpath)
-		
+
 		split[f'{key}']['dev'] = dev
 		devpath = f'data/{key}/dev/dev.csv'
 		subprocess.run(['rm', devpath])
 		print('saving to', devpath)
 		dev.to_csv(devpath)
-		
+
 	print('sucessfully split data', split.items())
 	return split
-	
+
 def generate_text(split: dict):
 	'''
 	each table contains a text column which will be used to align the audio file, this text column is used to populate the text directory of the alignment.
 	'''
 	print('generating text')
-	for key, subdict in split.items():
-		for batch, table in subdict.items():
-			address = f'./data/{key}/{batch}/alignment/text'
-			shutil.rmtree(address)
-			os.mkdir(address)
-			for i in table.index:
-				write_text_file(key, batch, i, table['text'][i])
+	for key, table in split.items():
+		#for batch, table in subdict.items():
+		address = f'./data/alignment/text'
+		shutil.rmtree(address)
+		os.mkdir(address)
+		for i in table.index:
+			write_text_file(i, table['text'][i])
 	print('generated text files')
-				
-def write_text_file(key: str, batch: str, i: int, text: str):
+
+def write_text_file(i: int, text: str):
 	'''
-	writes text to the directory data/key/batch/alignment/text/file_i.txt
+	writes text to the directory data/alignment/text/i.txt
 	'''
-	path = Path(f'./data/{key}/{batch}/alignment/text/file_{i}.txt')
+	path = Path(f'./data/alignment/text/{i}.txt')
 	with path.open(mode='w') as f:
-		f.write(remove_whitespace(text))
-		
-def remove_whitespace(text: str):
+		f.write(remove_whitespace(text, i))
+
+def remove_whitespace(text: str, i: int):
 	'''
-	removes whitespace
+	removes whitespace, additionally, due to the presence of identically spelled words in different rows, this function adds the index of the text to it so that each
+	element in the text column is guaranteed to be unique.
 	'''
 	whitespace = re.compile(r'\s')
-	return whitespace.sub("", text)
-	
+	temp =  whitespace.sub("", text)
+	temp = f'{temp}{i}'
+	return temp
+
 def generate_audio(split: dict):
 	'''
-	each table contains a column locating an audio file for that word, this is copied from its location and used to populatte the audio folder of the alignment 
+	each table contains a column locating an audio file for that word, this is copied from its location and used to populate the audio folder of the alignment
 	'''
 	print('generating audio files')
-	for key, subdict in split.items():
-		for batch, table in subdict.items():
-			shutil.rmtree(f'data/{key}/{batch}/alignment/audio')
-			os.mkdir(f'data/{key}/{batch}/alignment/audio')
-			for i in table.index:
-				copy_audio_file(key, batch, i, table['audio_urls'][i])
+	for key, table in split.items():
+		shutil.rmtree(f'data/alignment/audio')
+		os.mkdir(f'data/alignment/audio')
+		for i in table.index:
+			copy_audio_file(i, table['audio_urls'][i])
 	print('generated audio files')
-				
-				
-def copy_audio_file(key: str, batch: str, i: int, address: str):
+
+
+def copy_audio_file(i: int, address: str):
 	'''
-	copies the file located at data/audio/address to data/key/batch/alignment/audio/file_i.wav
+	copies the file located at data/audio/address to data/alignment/audio/i.wav
 	'''
-	print('current address', address, 'for file number', i, 'in', key, batch)
 	address = filter_audio_url(address)
-	source = f'data/audio/{address}'
-	target = f'data/{key}/{batch}/alignment/audio/file_{i}.wav'
-	shutil.copy(source, target)
-	print('audio file copied successfuly')
-	
+	source = Path(f'data/audio/{address}')
+	target = Path(f'data/alignment/audio/{i}.wav')
+	waveform, samplerate = torchaudio.load(source)
+	padded = pad(waveform)
+	torchaudio.save(target, padded, samplerate)
+
+def pad(waveform: Tensor):
+	'''
+	adds a 20k bit silence (approximately half a second) to both ends of the audio
+	'''
+	pad1 = torch.zeros((20000,))
+	pad2 = torch.zeros((20000,))
+	audio = torch.cat((pad1, waveform.reshape(-1), pad2))
+	return audio
+
 def filter_audio_url(address: str):
 	'''
 	returns the hashable location of audio
@@ -132,42 +149,43 @@ def filter_audio_url(address: str):
 
 def generate_aligner_dictionary(data: dict):
 	'''
-	montreal requires a dictionary of mappings from the arabic directly to a phoneme sequence in the vocabulary providded by the acoustic model of MFA. currently, there is no such dictionary
-	so we will generate one from the data by mapping the arabic text directly to its already provided ipa trasncription and then mapping this to the character set of the phonemes in MFA.
-	the function that maps the observed chracters in the data to phonemes in MFA is already created and stored in the directory. 
+	montreal requires a dictionary of mappings from the arabic, directly to a phoneme sequence in the vocabulary provided by its acoustic model. currently, there is no such dictionary
+	so we will generate one from the data by mapping the arabic text directly to its already provided ipa transcription and then mapping this to the character set of the phonemes in MFA.
+	the function that maps the observed chracters in the data to phonemes in MFA has already been defined and stored in the directory.
 	'''
 	print('generating aligner vocabulary')
+	dictionary = {}
 	for key, value in data.items():
-		vocab = zip(value['text'], value['ipa'])
-		dictionary = {clean_text(txt):map_to_mfa(ipa) for txt, ipa in vocab}
-		write_model_dictionary(key, dictionary)
-		
-def clean_text(txt: str):
+		for i in value.index:
+			dictionary[clean_text(value['text'][i], i)] = map_to_mfa(value['ipa'][i])
+	write_model_dictionary(dictionary)
+
+def clean_text(txt: str, i: int):
 	'''
 	processes the text part of data
 	'''
 	print('received text', txt)
 	val = re.sub(r"\s", "", txt)
+	val = f'{val}{i}'
 	print('writing ', val, 'in dict')
 	return val
-	
-def write_model_dictionary(key: str, dictionary: dict):
+
+def write_model_dictionary(dictionary: dict):
 	'''
-	writes the model dictionary to data/key/arabic_mfa.dict
+	writes the model dictionary to data/arabic_mfa.dict
 	'''
-	path = Path(f'data/{key}/arabic_mfa.dict')
+	path = Path(f'data/arabic_mfa.dict')
 	with path.open(mode='w') as f:
 		for key, value in dictionary.items():
 			line = f'{key}\t{value}\n'
 			f.write(line)
-			
-			
+
 def map_to_mfa(ipa: str):
 	'''
-	the raw ipa strings are not sutiatble for alignment before putting them into a specific format; any suprasegmentals need to be removed if they are not a part of mfa vocabulary,
-	additionaly, mfa strings are delimited by space, however the ipa provided does not come with space delimitation, this needs to be added with the additional comlplication of that any suprasegmatal sequences attatched to an 
-	ipa character should be considered a part of the same token. after this cleaning is applied, the ipa string is sent to the raw ipa to model symbols function to be trnasformed into an roughly equivalent sequence of an mfa phone string, 
-	which can be used for alignment directly.
+	the raw ipa strings are not suitable for alignment; any suprasegmentals need to be removed if they are not a part of mfa vocabulary,
+	mfa strings are delimited by space, however the ipa provided does not come with space delimitation, this needs to be added with the additional complication that any suprasegmental sequences attatched to an
+	ipa character should be considered a part of the same token. after this cleaning is applied, the ipa string is sent to the raw 'ipa to model' symbol function to be transformed into an roughly equivalent
+	sequence of mfa phone string, which can be used for alignment directly.
 	'''
 	print('received ipa', ipa)
 	ipa = re.sub(r"\s", "", ipa)
@@ -189,25 +207,9 @@ def map_to_mfa(ipa: str):
 		print('mapping', segmented_list[i], 'to', model_symbols[ipa])
 		segmented_list[i] = model_symbols[ipa]
 	return " ".join(segmented_list)
-			
+
 
 if __name__ == '__main__':
 	prepare_alignments()
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+
+

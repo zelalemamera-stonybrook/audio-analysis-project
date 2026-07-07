@@ -1,77 +1,26 @@
-This repository holds all of the relevant files for our stress analysis project. You may clone this repository to replicate all of the steps that were involved during the development of this model. The pipeline begins with raw audio and ipa tables. These were obtained from our data source and were modified slightly for ease and convenience. In particular, we chose to remove one syllable data from the original dataset because we make the assumption that monosyllabic words in this language (Jordanian Arabic) are all stressed and hence do not contribute additional information to the classification model. Additionally, we generate syllable information from the ipa and split the data by syllables; this makes the subsequent steps of the preprocessing more efficient. The model is not trained on separate syllables so there is no distinction made between words of different syllable lengths, at least at this point. All code is assumed to be running from the root of this directory unless any subprocesses are called within some subdirectories, which will always be done automatically and will not require any user input. 
+This repository holds all of the relevant files for our stress analysis project. You may clone this repository
+to replicate all of the steps that were involved during the development of the model. The pipeline begins with raw audio and a stress table.
+These were obtained from our data source and were modified slightly for ease and convenience. In particular, we chose to remove one syllable
+data from the original dataset, because we make the assumption that monosyllabic words in this language (Jordanian Arabic) are all stressed
+and hence do not contribute additional information. Additionally, we generate syllable information from the table which we use
+to syllabify the raw audio. 
 
-In order to replicate the steps of this pipeline successfully, we assume that you have installed python and two critical audio analysis softwares Praat and MFA(montreal forced aligner). Audio files need to be aligned to text so some sort of forced alignment is needed, we choose to use MFA because it is a standard in linguistics. You may be able to obtain forced alignments in another way, for example a neural network, we only make the assumption that the method you use has the ability to generate textgrids, which are the objects that Praat operates on. We use Praat for generating syllables and relevant acoustic and spectral features from the audio. We believe that using spectral features in addition to sound vectors is beneficial to the performance of the model. Additionally, one of our research goals is to understand the impact of acoustic features on stress so including them in the data is important. You may skip feature generation entirely and apply the model exclusively on raw audio data, the performance difference is probably not that significant. 
+All code is assumed to be running from the root of this directory unless any subprocesses are called within subdirectories, which will always be done automatically and will not require any user input. 
 
-In order to start step 1 of the preprocessing pipleline, run
+The entire pipeline has been implemented as a shell script as pipline.sh
 
-python preprocessing/PrepareAlignments.py
+In order to sucessfully replicate the steps of this pipeline, you should install some necessary programs. One is Python which is used for most of the data processing (via pandas tables) and for the machine
+learning steps (via Pytorch). You should also install torchaudio and torchcodec. Two additional audio analysis software are used: Praat and MFA(montreal forced aligner).
+ 
+MFA is the aligner. We use it to map the Arabic text provided in the table to raw audio input. Aligning raw Arabic audio is a non trivial task since there is no pretrained model to do this. We generate a custom dictionary and
+repurpose an english acoustic model. You may be able to obtain forced alignments in another way, for example a neural network, we only make the assumption that the method you use has the ability to generate textgrids, 
+which are the objects that Praat operates on. 
 
-this generates the text and audio corpus for the forced aligner. The next steps assume you are working with MFA and that you have installed it using conda. So that you can run
+We use Praat for syllabifiying audio, and for generating high quality acoustic and spectral features.
 
-conda activate aligner
+Once all of the above requirements are met, you may perform the pipeline via
 
-to start your aligner. we next move to step 2
+bash pipeline.sh 
 
-bash preprocessing/align_exec.sh
-
-this aligns all of the batches from the previous and generate all of the required textgrids. Once you are done please deactivate your aligner environment 
-
-conda deactivate
-
-Then export the location of your Praat application via
-
-export PRAAT=path
-
-replace path with the direct path to Praat on your computer, which may be obtained by just following
-
-cd /
-
-which should bring you to the root of your computer, then 
-
-ls
-
-should reveal a folder called Applications
-
-and you may subsequently search in this directory to find Praat, otherwise Praat may be installed in your User directory which you can access using
-
-cd ~
-
-or following your Users subfolder from the root.
-
-then continue the same step by going down the Applications folder. If you can't find Praat in this manner, consult other sources, or install Praat again. 
-
-once you have the praat path stored in the PRAAT environmental variable, you may call step 3 of the pipeline.
-
-bash preprocessing/syllabify_exec.sh
-
-this syllabifies all of the aligned audio from step 2. 
-
-if you want features, you should next run
-
-bash preprocessing/spectral_exec.sh
-
-which generates features for each syllabified dataset. 
-
-by this point all of the data should be prepared for the inital parts of model ingestion. To convert the data to vectors run step 4 of the pipeline. 
-
-python preprocessing/PrepareData.py
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+or simply
+./pipeline.sh
