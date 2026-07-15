@@ -6,22 +6,24 @@ form: "Information"
 endform
 
 Create Strings as file list: "fileList", source_directory$ + "*.wav"
-
 n = Get number of strings
-
 for i from 1 to n
 	wavname$ = Get string: i
 	Read from file: source_directory$ + wavname$
-	name$ = selected$ ("Sound", 1)
+	iD$ = selected$ ("Sound", 1)
 	
 	writeInfoLine: source_directory$ + wavname$
 	
-	To Formant (burg): 0.0, 5, 5500.0, 0.025, 50.0
-	Down to Table: "no", "yes", 6, "yes", 6, "no", 6, "yes"
-	Save as comma-separated file: target_directory$ + name$ + ".csv"
-	writeInfoLine: target_directory$ + name$ + ".csv"
-	selectObject: "Sound " + name$
+	formant = To Formant (burg): 0.0, 5, 5500.0, 0.025, 50.0
+	matrix = To Matrix: 1
+	tableofreal = To TableOfReal
+	table = To Table: "none"
+
+	Save as comma-separated file: target_directory$ + iD$ + ".csv"
+	writeInfoLine: target_directory$ + iD$ + ".csv"
+	selectObject: "Sound " + iD$, formant, matrix, tableofreal, table
 	Remove
 	selectObject: "Strings fileList"
 endfor
+Remove
 	

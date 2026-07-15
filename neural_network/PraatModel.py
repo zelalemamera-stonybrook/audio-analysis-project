@@ -1,12 +1,13 @@
 '''
-The following code specifies a neural network that takes as its input a word (treated as a sequence of syllables) and outputs a sequence of probability distributions (one for each syllable). 
-We try to use some sort of attention mechanism to infer the importance of the linguistic features used. 
+The following code specifies a neural network that takes as its input a word (treated as a sequence of syllables) and outputs a sequence of probability distributions (one for each syllable).
+We try to use some sort of attention mechanism to infer the importance of the linguistic features used.
 '''
 
 import torch
 import torchaudio
 import torch.nn as nn
 from torch import Tensor
+DEBUG = True
 
 class Network(nn.Module):
 	'''
@@ -15,27 +16,27 @@ class Network(nn.Module):
 	def __init__(self):
 		super().__init__()
 		print('initializing parameters')
-		self.cycles = nn.parameter.Parameter(torch.tensor(float(0)), requires_grad = False) 
-		
+		self.epochs = nn.parameter.Parameter(torch.tensor(float(0)), requires_grad = False)
+
 		self.conv1 = nn.Conv1d(1, 3, (9,), stride = 5)
 		self.conv1.weight.data = nn.init.uniform_(self.conv1.weight.data, -9 * 0.5, 9 * 0.5)
-		
-		self.conv2 = nn.Conv1d(3,2, (5,), stride=2) 
+
+		self.conv2 = nn.Conv1d(3,2, (5,), stride=2)
 		self.conv2.weight.data = nn.init.uniform_(self.conv2.weight.data, -5 * 0.5, 5 * 0.5)
-		
+
 		self.conv3 = nn.Conv1d(2, 1, (6,), stride=2)
 		self.conv3.weight.data = nn.init.uniform_(self.conv3.weight.data, -6 * 0.5, 6 * 0.5)
-		
+
 		self.conv4 = nn.Conv1d(1,1,(4,), stride = 2)
 		self.conv4.weight.data = nn.init.uniform_(self.conv4.weight.data, -4 * 0.5, 4 * 0.5)
-		
+
 		self.conv5 = nn.Conv1d(1,1, (4,), stride = 2)
-		self.conv5.weight.data = nn.init.uniform_(self.conv5.weight.data, -4 * 0.5, 4 * 0.5) 
-		
+		self.conv5.weight.data = nn.init.uniform_(self.conv5.weight.data, -4 * 0.5, 4 * 0.5)
+
 		self.conv6 = nn.Conv1d(1,1, (4,), stride = 2)
-		self.conv6.weight.data = nn.init.uniform_(self.conv6.weight.data, -4 * 0.5, 4 * 0.5)	
-		
-	
+		self.conv6.weight.data = nn.init.uniform_(self.conv6.weight.data, -4 * 0.5, 4 * 0.5)
+
+
 		self.attnlayer1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500, 2000 + 165)),  - 0.5, 0.5))
 		self.attnlayer1_bias = nn.parameter.Parameter(torch.rand((500)) - 0.5)
 		self.attnlayer2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100, 500) ), - 0.5, 0.5))
@@ -43,17 +44,17 @@ class Network(nn.Module):
 		self.attnlayer3 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1,100)), - 0.5 * 1.5, 0.5 * 1.5))
 		self.attnlayer3_bias = nn.parameter.Parameter(torch.rand((1,)) - 0.5)
 		self.feature_weights = []
-	
+
 		self.recurrent_left_in = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1000, 165 * 13) ),  - 0.5, 0.5))
 		self.recurrent_left_in_bias = nn.parameter.Parameter(torch.rand((1000) ))
 		self.recurrent_left_hidden = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1000,1000)), -0.5, 0.5))
 		self.recurrent_left_hidden_bias = nn.parameter.Parameter(torch.rand((1000)))
-		
+
 		self.recurrent_right_in = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1000,165 * 13)), - 0.5, 0.5))
 		self.recurrent_right_in_bias = nn.parameter.Parameter(torch.rand((1000) ))
 		self.recurrent_right_hidden = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1000,1000)), -0.5, 0.5))
 		self.recurrent_right_hidden_bias = nn.parameter.Parameter(torch.rand((1000)))
-		
+
 		self.recurrent_out1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1000, 2000 + 165)), - 0.5, 0.5))
 		self.recurrent_out1_bias = nn.parameter.Parameter(torch.rand((1000)))
 		self.recurrent_out2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500, 1000) ), - 0.5, 0.5))
@@ -66,14 +67,14 @@ class Network(nn.Module):
 		self.tanh = nn.Tanh()
 		self.sigmoid = nn.Sigmoid()
 		self.softmax = nn.Softmax(dim=-1)
-					
-	def forward(self, word: Tensor, features: Tensor):
+
+	def forward(self, word: list, features: list):
 		'''
-		passes the word once through the network, and returns the output. 
-		input shape: (n, 30)
+		passes the word once through the network, and returns the output
+		word shape: (n, 30000)
+		features shape: (f, n, 250)
 		output shape: (n, 2)
 		where n is the number of syllables >= 2
-		features is a list of feature embeddings of this word
 		'''
 		'''
 		sound_vec_embedding = []
@@ -88,7 +89,7 @@ class Network(nn.Module):
 		output = self.rnn_forward(word, features)
 		print('finished forward pass')
 		return output
-		
+
 
 	def filter(self, features: Tensor, i: int):
 		'''

@@ -6,21 +6,23 @@ form: "Information"
 endform
 
 Create Strings as file list: "fileList", source_directory$ + "*.wav"
-
 n = Get number of strings
-
 for i from 1 to n
 	wavname$ = Get string: i
 	Read from file: source_directory$ + wavname$
-	name$ = selected$ ("Sound", 1)
+	iD$ = selected$ ("Sound", 1)
 	writeInfoLine: source_directory$ + wavname$
-	To Pitch (raw autocorrelation): 0.0, 75.0, 600.0, 15, "yes", 0.03, 0.45, 0.01, 0.35, 0.14
-	Down to PitchTier
-	Down to TableOfReal: "Hertz"
-	To Table: "none"
-	Save as comma-separated file: target_directory$ + name$ + ".csv"
-	writeInfoLine: target_directory$ + name$ + ".csv"
-	selectObject: "Sound " + name$
+
+	pitch = To Pitch (filtered autocorrelation): 0.0, 75.0, 800.0, 15, "no", 0.03, 0.09, 0.50, 0.055, 0.35, 0.14
+	matrix = To Matrix
+	tableofreal = To TableOfReal
+	table = To Table: "none"
+
+	Save as comma-separated file: target_directory$ + iD$ + ".csv"
+	writeInfoLine: target_directory$ + iD$ + ".csv"
+
+	selectObject: "Sound " + iD$, pitch, matrix, tableofreal, table
 	Remove
 	selectObject: "Strings fileList"
 endfor
+Remove

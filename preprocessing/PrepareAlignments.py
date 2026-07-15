@@ -22,6 +22,8 @@ model_symbols = {}
 with path.open(mode='r') as f:
 		model_symbols = json.load(f)
 
+
+
 def prepare_alignments():
 	'''
 	the data is assumed to be written into exactly one table. this table will be read from the data directory.
@@ -42,6 +44,8 @@ def prepare_alignments():
 	generate_aligner_dictionary(data)
 	data['data'].to_csv('data/table.csv')
 
+####################################################
+#The following function is NOT used in this program
 def split_data(data: dict):
 	'''
 	80/10/10 split
@@ -53,28 +57,13 @@ def split_data(data: dict):
 		remainder = val.drop(list(train.index))
 		test = remainder.sample(frac = .5)
 		dev = remainder.drop(list(test.index))
-		split[f'{key}'] = {}
 
-		split[f'{key}']['train'] = train
-		trainpath = f'data/{key}/train/train.csv'
-		subprocess.run(['rm', trainpath])
-		print('saving to', trainpath)
-		train.to_csv(trainpath)
-
-		split[f'{key}']['test'] = test
-		testpath = f'data/{key}/test/test.csv'
-		subprocess.run(['rm', testpath])
-		print('saving to', testpath)
-		test.to_csv(testpath)
-
-		split[f'{key}']['dev'] = dev
-		devpath = f'data/{key}/dev/dev.csv'
-		subprocess.run(['rm', devpath])
-		print('saving to', devpath)
-		dev.to_csv(devpath)
-
-	print('sucessfully split data', split.items())
+		split['train'] = train
+		split['test'] = test
+		split['dev'] = dev
 	return split
+#
+######################################################
 
 def generate_text(split: dict):
 	'''
@@ -128,17 +117,34 @@ def copy_audio_file(i: int, address: str):
 	address = filter_audio_url(address)
 	source = Path(f'data/audio/{address}')
 	target = Path(f'data/alignment/audio/{i}.wav')
+	print(source)
+	print(target)
 	waveform, samplerate = torchaudio.load(source)
 	padded = pad(waveform)
 	torchaudio.save(target, padded, samplerate)
 
 def pad(waveform: Tensor):
 	'''
-	adds a 20k bit silence (approximately half a second) to both ends of the audio
+	each audio already has some silence at each end. If this silence interval is too small, the aligner will consider the sound endge as
+	an end of word boundary. this is not desirable since the syllabifier assumes that the word is contained as a subinterval of the audio. Alternatively,
+	If the silence interval is too large, alignment quality deteriorates. This function first removes all silence from both ends of the sound, then adds a 10k bit silence (approximately 1/4th of a second)
+	to both ends of the audio
 	'''
-	pad1 = torch.zeros((20000,))
-	pad2 = torch.zeros((20000,))
-	audio = torch.cat((pad1, waveform.reshape(-1), pad2))
+	waveform = waveform.reshape(-1)
+	left = 0
+	right = len(waveform) - 1
+	n = right
+	while (waveform[n] == 0):
+		right -=1
+		n -=1
+	n = left
+	while (waveform[n] == 0):
+		left +=1
+		n +=1
+	waveform = waveform[left:right + 1]
+	pad1 = torch.zeros((10000,))
+	pad2 = torch.zeros((10000,))
+	audio = torch.cat((pad1, waveform, pad2))
 	return audio
 
 def filter_audio_url(address: str):
@@ -209,7 +215,6 @@ def map_to_mfa(ipa: str):
 	return " ".join(segmented_list)
 
 
+
 if __name__ == '__main__':
 	prepare_alignments()
-
-
