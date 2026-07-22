@@ -12,7 +12,7 @@ for i from 1 to n
         
         writeInfoLine: source_directory$ + wavname$
         
-        intensity = To Intensity: 100.0, 0.0, "yes"
+        intensity = To Intensity: 162.0, 0.0, "yes"
         matrix = Down to Matrix
         tableofreal = To TableOfReal
         table = To Table: "none"

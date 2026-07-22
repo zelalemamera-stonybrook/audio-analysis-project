@@ -33,39 +33,46 @@ syllabify ()
 featurize ()
 {
 	echo "generating all features"
-	rm -r "data/source"
-	mkdir "data/source"
+
 	rm -r "data/features"
 	mkdir "data/features"
-	mkdir "data/features/Dur"
 
 	echo "generating duration"
+	mkdir "data/features/Dur"
 	python "preprocessing/Dur.py" "data/alignment/syllabified_audio" "data/features/Dur"
 
-	echo "padding audio"
-	python "preprocessing/Pad.py" "data/alignment/syllabified_audio" "data/source"
-
 	echo "generating Praat features"
-	for name in {F0,F1,F2,F3,F4,F5,Intensity};
+	for name in {Intensity,F0,F1,F2,F3,F4,F5};
 		do
 		mkdir "data/features/"$name"csv"
-		mkdir "data/features/"$name
-		$PRAAT --run "preprocessing/"$name".praat" "../data/source/" "../data/features/"$name"csv/"
+		$PRAAT --run "preprocessing/"$name".praat" "../data/alignment/syllabified_audio/" "../data/features/"$name"csv/"
+
 		echo "transforming to tensors"
-		python "preprocessing/Csvtopt.py" "data/features/"$name"csv" "data/features/"$name
+		mkdir "data/features/"$name"pt"
+		python "preprocessing/Csvtopt.py" "data/features/"$name"csv" "data/features/"$name"pt"
+
 		rm -r "data/features/"$name"csv";
 		done
 
 	echo "generating melspectrogram"
 	mkdir "data/features/Mel"
-	$PRAAT --run "preprocessing/Mel.praat" "../data/source/" "../data/features/Mel/"
+	$PRAAT --run "preprocessing/Mel.praat" "../data/alignment/syllabified_audio/" "../data/features/Mel/"
 
 	echo "generating vector embeddings"
-	mkdir "data/features/Wav2vec"
-	python "preprocessing/Wav2vec.py" "data/source" "data/features/Wav2vec"
-	mkdir "data/features/Raw"
-	python preprocessing/Wav2pt.py "data/source" "data/features/Raw"
-	rm -r "data/source"
+	mkdir "data/features/Wav2vecpt"
+	python "preprocessing/Wav2vec.py" "data/alignment/syllabified_audio" "data/features/Wav2vecpt"
+
+	echo "padding feature directories"
+	for name in {F{0,1,2,3,4,5},Intensity,Wav2vec};
+		do
+		mkdir data/features/$name
+		python preprocessing/Pad.py "data/features/"$name"pt" data/features/$name
+		rm -r "data/features/"$name"pt";
+		done
+
+	echo "Generating Raw"
+	mkdir data/features/Raw
+	python "preprocessing/Padaudio.py" "data/alignment/syllabified_audio" "data/features/Raw"
 }
 
 split ()
@@ -81,7 +88,7 @@ split ()
 	python "preprocessing/SplitTable.py" "data/table.csv" "data"
 	for batch in {train,test,dev};
 		do
-		for name in {Raw,Dur,F0,F2,F1,F3,F4,F5,Intensity,Wav2vec};
+		for name in {Raw,Dur,F{0,1,2,3,4,5},Intensity,Wav2vec};
 			do
 			echo "splitting "$name" to "$batch
 			rm -r "data/"$batch"/"$name
@@ -98,9 +105,23 @@ balance ()
 
 }
 
+normalize ()
+{
+	#normalizes the batches in question by subtracting them from the mean over the directory
+	for batch in {train,test,dev};
+		do
+		for feature in {F{0,1,2,3,4,5},Intensity};
+			do
+			rm -r "data/"$batch"/"$feature"norm"
+			mkdir "data/"$batch"/"$feature"norm"
+			python preprocessing/Normalize.py data/$batch/$feature "data/"$batch"/"$feature"norm";
+			done;
+		done
+}
 
 #align
 #syllabify
-#featurize
-#split
+featurize
+split
 balance
+normalize

@@ -1,6 +1,6 @@
 '''
-This is a simple python program that finds the maximum length audio vector in the provided directory and pads all of the audio in the directory to this size.
-The padded audio is stored in the provided target location.
+the following program finds the maximum length vector in the input directory and pads all of the vectors to that size. The result is saved to the target
+directory provided.
 '''
 import argparse
 import torch
@@ -14,22 +14,22 @@ import re
 
 def pad(source: str, target: str):
 	'''
-	identifies the maximum length of audio in the source directory, and pads every vector to this number.
+	identifies the maximum length vector in the source directory, and pads every vector to this number.
 	then saves the result to the target directory
 	'''
 	max = 0
 	for file in source.iterdir():
-		waveform, samplerate = torchaudio.load(file)
-		print("looking for maximum", file, "size", len(waveform[0]))
-		if len(waveform[0]) > max:
-			max = len(waveform[0])
+		vector = torch.load(file)
+		print("looking for maximum", file, "size", len(vector))
+		if len(vector) > max:
+			max = len(vector)
 	for file in source.iterdir():
 		print("padding", file, "...")
-		waveform, samplerate = torchaudio.load(file)
-		waveform = zeropad(waveform, max)
-		print('new shape of tensor', waveform.shape)
+		vector = torch.load(file)
+		vector = zeropad(vector, max)
+		print('new shape of tensor', vector.shape)
 		filename = os.path.split(file)[-1]
-		torchaudio.save(os.path.join(target, filename), waveform, samplerate)
+		torch.save(vector, os.path.join(target, filename))
 
 def rename(filename: str, extension: str):
         '''

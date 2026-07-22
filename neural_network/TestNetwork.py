@@ -14,7 +14,9 @@ import os
 from pandas import DataFrame
 from TrainNetwork import binarize
 import importlib
-DEBUG = True
+from TrainNetwork import getmaxfeaturedimension
+from Pad import zeropad
+DEBUG = False
 
 def test(source: str, network, hypothesis: str, table: str, results: str, *features):
 	'''
@@ -25,15 +27,19 @@ def test(source: str, network, hypothesis: str, table: str, results: str, *featu
 		print('table is', table)
 	table = pd.read_csv(table)
 	table = table.set_index('Unnamed: 0')
+	maxfeaturedimension = getmaxfeaturedimension(features)
 	for i in table.index:
 		word,address = getword(i, source)
 		if DEBUG:
 			print('reading word', address)
-		wordembeddings = getfeature(i, features)
+		if True:
+			wordembeddings = getfeature(i, features, maxfeaturedimension)
+		else:
+			wordembeddings = None
 		if DEBUG:
 			if wordembeddings:
-				wordembeddingsi = torch.tensor(wordembeddings)
-				print('input for attention network is', wordembeddingsi.shape)
+				wordembeddingsi = wordembeddings
+				print('input for attention network is', [torch.stack(i).shape for i in wordembeddingsi])
 		y_hat = network.forward(word, wordembeddings)
 		if DEBUG:
 			print('forward complete')
@@ -50,11 +56,18 @@ def getword(i: int, source: str):
 	word = sorted(list(source.glob(f'{i}_*')))
 	return [torch.load(i) for i in word], word
 
-def getfeature(i: int, features: tuple):
+def getfeature(i: int, features: tuple, max: int):
 	'''
 	gets the ith word in each of the directories in features
 	'''
-	return None
+	output = []
+	for featuredir in features:
+		word = sorted(list(featuredir.glob(f'{i}_*')))
+		tensors = [torch.load(f) for f in word]
+		if type(tensors[0]) == float:
+			tensors = [torch.tensor([i]) for i in tensors]
+		output.append([zeropad(f, max) for f in tensors])
+	return output
 
 def writeoutput(address: list, y_hat: list, hypothesis: str):
 	'''
@@ -151,7 +164,7 @@ def write_hypothesis_analysis(hypothesis: str, table: DataFrame, results: str, a
 	the model's hypothesis is analysed by looking at the probabilites it generated for the source data and comparing them with the truth in the table.
 	'''
 	print(f'writing hypothesis analysis to {hypothesis}')
-	if attention_weights == None:
+	if attention_weights == None or attention_weights == []:
 		path = Path(os.path.join(results, Path('hypothesis_analysis.txt')))
 		with path.open('w') as f:
 			line = f'ipa\tsyllable\tprobability\tpredicted\tgold\tcorrect\tfeatures\n'
@@ -170,6 +183,8 @@ def write_hypothesis_analysis(hypothesis: str, table: DataFrame, results: str, a
 						f.write(line)
 		return
 	path = Path(os.path.join(results, Path('hypothesis_analysis.txt')))
+	if DEBUG:
+		print('recieved attention weights', len(attention_weights))
 	with path.open('w') as f:
 		line = f'ipa\tsyllable\tprobability\tpredicted\tgold\tcorrect\tfeatures\n'
 		f.write(line)

@@ -122,7 +122,7 @@ def getbatch(i: int, source: str, table: list):
 			print('gold label for word', y[-1])
 	return x, y
 
-def featurebatch(i: int, features: tuple, table: list, max: int):
+def getfeaturebatch(i: int, features: tuple, table: list, max: int):
 	'''
 	gets the features from batch i of the table. for each word in the batch, features is a list of directories that contain the different representations of that word.
 	'''
@@ -135,6 +135,8 @@ def featurebatch(i: int, features: tuple, table: list, max: int):
 			files = sorted(list(folder.glob(f'{i}_*')))
 			for file in files:
 				tensor = torch.load(file)
+				if type(tensor) == float:
+					tensor = torch.tensor([tensor])
 				word.append(zeropad(tensor, max))
 			wordfeatures.append(word)
 		output.append(wordfeatures)
@@ -148,11 +150,16 @@ def getmaxfeaturedimension(features: tuple):
 	'''
 	max = 0
 	for folder in features:
-		i = torch.randint(100,(1,))
-		file = next(folder.glob(f'{i}_1.pt'))
+		file = next(folder.glob('*'))
 		tensor = torch.load(file)
+		if type(tensor) == float:
+			continue
+		if DEBUG:
+			print(file,'size', len(tensor))
 		if len(tensor) > max:
 			max = len(tensor)
+	if DEBUG:
+		print('max feature', max)
 	return max
 
 def getextension(file: str):
