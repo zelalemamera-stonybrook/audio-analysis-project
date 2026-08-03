@@ -18,50 +18,63 @@ class Network(nn.Module):
 		print('initializing parameters')
 		self.name = 'PraatModel'
 
+		g_cpu = torch.Generator()
+		seed = 3529145006359120161
 		self.conv1 = nn.Conv1d(1, 3, (5,), stride = 5)
-		self.conv1.weight.data = nn.init.uniform_(self.conv1.weight.data, -0.5 * 9, 0.5 * 9)
+		self.conv1.weight.data = nn.init.uniform_(self.conv1.weight.data, -0.5 * 9, 0.5 * 9, g_cpu.manual_seed(seed))
+		self.conv1.bias.data = nn.init.uniform_(self.conv1.bias.data, -0.5 * 9, 0.5 * 9, g_cpu.manual_seed(seed))
+
 
 		self.conv2 = nn.Conv1d(3,2, (5,), stride=2)
-		self.conv2.weight.data = nn.init.uniform_(self.conv2.weight.data, -0.5 * 5, 0.5 * 5)
+		self.conv2.weight.data = nn.init.uniform_(self.conv2.weight.data, -0.5 * 5, 0.5 * 5, g_cpu.manual_seed(seed))
+		self.conv2.bias.data = nn.init.uniform_(self.conv2.bias.data, -0.5 * 5, 0.5 * 5, g_cpu.manual_seed(seed))
 
 		self.conv3 = nn.Conv1d(2, 1, (6,), stride=2)
-		self.conv3.weight.data = nn.init.uniform_(self.conv3.weight.data, -0.5 * 6, 0.5 * 6)
+		self.conv3.weight.data = nn.init.uniform_(self.conv3.weight.data, -0.5 * 6, 0.5 * 6, g_cpu.manual_seed(seed))
+		self.conv3.bias.data = nn.init.uniform_(self.conv3.bias.data, -0.5 * 6, 0.5 * 6, g_cpu.manual_seed(seed))
+
 
 		self.conv4 = nn.Conv1d(1,1,(4,), stride = 2)
-		self.conv4.weight.data = nn.init.uniform_(self.conv4.weight.data, -0.5 * 4, 0.5 * 4)
+		self.conv4.weight.data = nn.init.uniform_(self.conv4.weight.data, -0.5 * 4, 0.5 * 4, g_cpu.manual_seed(seed))
+		self.conv4.bias.data = nn.init.uniform_(self.conv4.bias.data, -0.5 * 4, 0.5 * 4, g_cpu.manual_seed(seed))
+
 
 		self.conv5 = nn.Conv1d(1,1, (4,), stride = 2)
-		self.conv5.weight.data = nn.init.uniform_(self.conv5.weight.data, -0.5 * 4, 0.5 * 4)
+		self.conv5.weight.data = nn.init.uniform_(self.conv5.weight.data, -0.5 * 4, 0.5 * 4, g_cpu.manual_seed(seed))
+		self.conv5.bias.data = nn.init.uniform_(self.conv5.bias.data, -0.5 * 4, 0.5 * 4, g_cpu.manual_seed(seed))
 
 		self.conv6 = nn.Conv1d(1,1, (4,), stride = 2)
-		self.conv6.weight.data = nn.init.uniform_(self.conv6.weight.data, -0.5 * 4, 0.5 * 4)
+		self.conv6.weight.data = nn.init.uniform_(self.conv6.weight.data, -0.5 * 4, 0.5 * 4, g_cpu.manual_seed(seed))
+		self.conv6.bias.data = nn.init.uniform_(self.conv6.bias.data, -0.5 * 4, 0.5 * 4, g_cpu.manual_seed(seed))
 
+		'''
 		self.attnlayer1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500, 2000 + 165)),  - 0.5, 0.5))
 		self.attnlayer1_bias = nn.parameter.Parameter(torch.rand((500)) - 0.5)
 		self.attnlayer2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100, 500) ), - 0.5, 0.5))
 		self.attnlayer2_bias = nn.parameter.Parameter(torch.rand((100) ) - 0.5)
 		self.attnlayer3 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1,100)), - 0.5 * 1.5, 0.5 * 1.5))
 		self.attnlayer3_bias = nn.parameter.Parameter(torch.rand((1,)) - 0.5)
+		'''
 		self.attention_weights = None
 
-		self.recurrent_left_in = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300, 58) ),  - 0.5, 0.5))
-		self.recurrent_left_in_bias = nn.parameter.Parameter(torch.rand((300) ))
-		self.recurrent_left_hidden = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300,300)), -0.5, 0.5))
-		self.recurrent_left_hidden_bias = nn.parameter.Parameter(torch.rand((300)))
+		self.recurrent_left_in = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300, 58) ),  - 0.5, 0.5, g_cpu.manual_seed(seed)))
+		self.recurrent_left_in_bias = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300) ), 0, 1, g_cpu.manual_seed(seed)))
+		self.recurrent_left_hidden = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300,300)), -0.5, 0.5, g_cpu.manual_seed(seed)))
+		self.recurrent_left_hidden_bias = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300)), 0, 1, g_cpu.manual_seed(seed)))
 
-		self.recurrent_right_in = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300, 58)), - 0.5, 0.5))
-		self.recurrent_right_in_bias = nn.parameter.Parameter(torch.rand((300) ))
-		self.recurrent_right_hidden = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300,300)), -0.5, 0.5))
-		self.recurrent_right_hidden_bias = nn.parameter.Parameter(torch.rand((300)))
+		self.recurrent_right_in = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300, 58)), - 0.5, 0.5,  g_cpu.manual_seed(seed)))
+		self.recurrent_right_in_bias = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300) ), 0, 1, g_cpu.manual_seed(seed)))
+		self.recurrent_right_hidden = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300,300)), -0.5, 0.5, g_cpu.manual_seed(seed)))
+		self.recurrent_right_hidden_bias = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300)), 0, 1, g_cpu.manual_seed(seed)))
 
-		self.recurrent_out1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300, 600 + 0)), - 0.5, 0.5))
-		self.recurrent_out1_bias = nn.parameter.Parameter(torch.rand((300)))
-		self.recurrent_out2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((150, 300) ), - 0.5, 0.5))
-		self.recurrent_out2_bias = nn.parameter.Parameter(torch.rand((150,)))
-		self.recurrent_out3 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((64, 150) ), - 0.5, 0.5))
-		self.recurrent_out3_bias = nn.parameter.Parameter(torch.rand((64,)))
-		self.recurrent_out4 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((2, 64) ), - 0.5, 0.5))
-		self.recurrent_out4_bias = nn.parameter.Parameter(torch.rand((2,)))
+		self.recurrent_out1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300, 600 + 0)), - 0.5, 0.5, g_cpu.manual_seed(seed)))
+		self.recurrent_out1_bias = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300)), 0, 1, g_cpu.manual_seed(seed)))
+		self.recurrent_out2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((150, 300) ), - 0.5, 0.5, g_cpu.manual_seed(seed)))
+		self.recurrent_out2_bias = nn.parameter.Parameter(nn.init.uniform_(torch.empty((150,)), 0, 1, g_cpu.manual_seed(seed)))
+		self.recurrent_out3 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((64, 150) ), - 0.5, 0.5, g_cpu.manual_seed(seed)))
+		self.recurrent_out3_bias = nn.parameter.Parameter(nn.init.uniform_(torch.empty((64,)), 0, 1, g_cpu.manual_seed(seed)))
+		self.recurrent_out4 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((2, 64) ), - 0.5, 0.5, g_cpu.manual_seed(seed)))
+		self.recurrent_out4_bias = nn.parameter.Parameter(nn.init.uniform_(torch.empty((2,)), 0, 1, g_cpu.manual_seed(seed)))
 
 		self.tanh = nn.Tanh()
 		self.sigmoid = nn.Sigmoid()

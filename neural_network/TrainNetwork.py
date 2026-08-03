@@ -1,5 +1,5 @@
 '''
-this program controls the training of the StressClassifier neural network. our inputs are assumed to be in the required form. we load in the data and optimize the network using SGD algorithm.
+This program controls the training of the provided neural network. The SGD algorithm is used.
 '''
 import importlib
 import argparse
@@ -18,65 +18,48 @@ DEBUG = False
 
 def train(network, source: str, table: str, fit: float, attention: bool, log: str, batchsize: int, *features):
 	'''
-	trains StressClassifier neural network on the source directory until the batch error is below the threshold. If attention is true, feature vectors are combined using weights to measure the 'importance' of
-	specific properties generated on the sound.
+	Trains the neural network exactly one epoch. An epoch is defined as one training pass over the input data. The data is batched before being passed to the model. Error is computed per batch
+	and backpropagated before loading in the next batch.
 	'''
 	table = pd.read_csv(table)
 	table = table.set_index('Unnamed: 0')
 
 	error_history = []
-	batcherror = 100
 	optim = torch.optim.SGD(network.parameters(), lr=0.001,  momentum=0.5)
 	network.feature_weights = []
 
 	numberofbatches = len(table) // batchsize
 	if len(table) % batchsize != 0:
 		numberofbatches +=1
-
 	table = groupbatches(table, batchsize)
 	maxfeaturedimension = getmaxfeaturedimension(features)
-	lastimprovement = 0
-	maximprovement = 100
-	maxerror = 100
-	while batcherror > fit and lastimprovement < maximprovement:
-		for i in range(numberofbatches):
-			optim.zero_grad()
-			if lastimprovement >= maximprovement:
-				break
-			if batcherror <= fit:
-				break
-			error = 0
-			x, y = getbatch(i, source, table)
-			if attention:
-				f = getfeaturebatch(i, features, table, maxfeaturedimension)
-			else:
-				f = listfull(None, batchsize)
-			for vector, feature, gold in zip(x, f, y):
-				if True:
-					vectori = torch.stack(vector)
-					print('input vector statistics', 'length', vectori.shape, torch.min(vectori).item(), torch.max(vectori).item(), torch.mean(vectori).item(), 'dimensions', torch.count_nonzero(vectori, dim=1).tolist())
-					if feature:
-						featurei = torch.stack([torch.stack(i) for i in feature])
-						print('input feature statistics', featurei.shape, torch.min(featurei).item(), torch.max(featurei).item(), torch.mean(featurei).item())
-					print(gold)
-				y_hat = network.forward(vector, feature)
-				if True:
-					print( y_hat, 'gold', gold)
-				error += compute_loss(y_hat, gold)
+	for i in range(numberofbatches):
+		optim.zero_grad()
+		error = 0
+		x, y = getbatch(i, source, table)
+		if attention:
+			f = getfeaturebatch(i, features, table, maxfeaturedimension)
+		else:
+			f = listfull(None, batchsize)
+		for vector, feature, gold in zip(x, f, y):
 			if True:
-				print('batch error', error)
-			error_history.append(error.item())
-			if error.item() < maxerror:
-				lastimprovement = 0
-				maxerror = error.item()
-			else:
-				lastimprovement +=1
-			batcherror = error.item()
-			print('backpropagating the error')
-			error.backward()
-			print('updating the parameters')
-			optim.step()
-			print('last improved', lastimprovement)
+				vectori = torch.stack(vector)
+				print('input vector statistics', 'length', vectori.shape, torch.min(vectori).item(), torch.max(vectori).item(), torch.mean(vectori).item(), 'dimensions', torch.count_nonzero(vectori, dim=1).tolist())
+				if feature:
+					featurei = torch.stack([torch.stack(i) for i in feature])
+					print('input feature statistics', featurei.shape, torch.min(featurei).item(), torch.max(featurei).item(), torch.mean(featurei).item())
+				print(gold)
+			y_hat = network.forward(vector, feature)
+			if True:
+				print( y_hat, 'gold', gold)
+			error += compute_loss(y_hat, gold)
+		if True:
+			print('batch error', error)
+		error_history.append(error.item())
+		print('backpropagating the error')
+		error.backward()
+		print('updating the parameters')
+		optim.step()
 	writemodel(network, f'{network.name}.json')
 	logerrorhistory(error_history, log)
 

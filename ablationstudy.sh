@@ -11,14 +11,14 @@ buildpraat ()
 		do
 		rm -r data/$batch/Praat
 		mkdir data/$batch/Praat
-		python ablation/Ablation.py data/$batch/table.csv data/$batch/Praat data/$batch/ data/$batch/$1;
+		python ablation/Ablation.py data/$batch/table.csv data/$batch/Praat data/$batch/ data/$batch/{$1,$1};
 		done
 }
 resetmodel ()
 {
 	# runs the reset training round to initialize the model
-	python neural_network/TrainNetwork.py PraatModel data/train/Praat data/train/balanced.csv 99 results/PraatModel/errorlog.txt 1 -r
-	python neural_network/TestNetwork.py data/dev/Praat  PraatModel results/PraatModel/hypothesis data/dev/table.csv results/PraatModel
+	python neural_network/TrainNetwork.py PraatModel data/train/Praat data/train/balanced.csv 99 results/PraatModel/errorlog.txt 25 -r
+	python neural_network/TestNetwork.py data/dev/Praat  PraatModel results/PraatModel/hypothesis data/dev/table.csv results/PraatModel 0
 }
 
 trainpraat ()
@@ -27,7 +27,7 @@ trainpraat ()
 		do
 		python neural_network/TrainNetwork.py PraatModel data/train/Praat data/train/balanced.csv 0.001 results/PraatModel/errorlog.txt 25
 
-		python neural_network/TestNetwork.py data/dev/Praat  PraatModel results/PraatModel/hypothesis data/dev/table.csv results/PraatModel;
+		python neural_network/TestNetwork.py data/dev/Praat  PraatModel results/PraatModel/hypothesis data/dev/table.csv results/PraatModel $i;
 		done
 }
 
@@ -56,11 +56,11 @@ ablation ()
 	# as of right now, this is assumed to have no serious consequence on the performance of each study.
 
 	#first the study that uses all features
-	buildpraat ""
-	resetmodel
-	trainpraat 100
-	summarize
-	resetresults "PraatModel"
+	#buildpraat ""
+	#resetmodel
+	#trainpraat 100
+	#summarize
+	#resetresults "PraatModel"
 
 	#next the ablation studies
 	for feature in {Dur,F{0,1,2,3,4,5}norm,Intensitynorm};
@@ -73,4 +73,32 @@ ablation ()
 		done
 }
 
+ablation_edgecases ()
+{
+	# Tests the combinations of the ablation study in a greedy manner.
+	buildpraat ""
+	resetmodel
+	resetresults "PraatModel"
+	trainpraat 100
+	summarize
+	resetresults "PraatModel"
+
+	for feature1 in {Dur,F{0,4,5}norm,Intensitynorm};
+		do
+		for feature2 in {Dur,F{0,4,5}norm,Intensitynorm};
+			do
+			for batch in {train,test,dev};
+				do
+				rm -r data/$batch/Praat
+				mkdir data/$batch/Praat
+				python ablation/Ablation.py data/$batch/table.csv data/$batch/Praat data/$batch/ data/$batch/{$feature1,$feature2};
+				done
+			resetmodel
+			trainpraat 100
+			summarize
+			resetresults "PraatModel";
+			done;
+		done
+
+}
 ablation

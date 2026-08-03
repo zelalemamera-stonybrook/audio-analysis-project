@@ -4,12 +4,9 @@
 
 summarize ()
 {
-	for model in {Raw+PraatModel,Wav2vec+PraatModel};
-		do
-		python results/txt2csv.py results/$model/statistics.txt results/$model/statistics.csv;
-		done
+	python results/txt2csv.py results/PraatModel/statistics.txt results/PraatModel/statistics.csv
 
-	python results/Summarize.py results/summary.txt results/{Wav2vec+PraatModel,Raw+PraatModel}/statistics.csv
+	python results/Summarize.py results/summary.txt results/PraatModel/statistics.csv
 }
 
 summarize

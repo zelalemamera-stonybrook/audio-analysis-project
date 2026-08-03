@@ -1,6 +1,6 @@
 '''
-the following program tests the performance of the given neural network. It generates f score, accuracy, precision, and recall over the provided dataset.
-in addition, this program also presents the weights that the neural network learned for feature embeddings. this can be used to make a judgement about which features are important.
+The following program tests the performance of the given neural network. It generates f score, accuracy, precision, and recall over the provided dataset.
+in addition, this program also presents the weights that the neural network learned for feature embeddings. This can be used to make a judgement about which features are important.
 '''
 import json
 from pathlib import Path
@@ -18,7 +18,7 @@ from TrainNetwork import getmaxfeaturedimension
 from Pad import zeropad
 DEBUG = False
 
-def test(source: str, network, hypothesis: str, table: str, results: str, *features):
+def test(source: str, network, hypothesis: str, table: str, results: str, epochs: int, *features):
 	'''
 	tests the network's performance on the source data. The transformed data is saved to hypothesis, then additional statistics are generated from this to be written
 	to results.
@@ -46,7 +46,7 @@ def test(source: str, network, hypothesis: str, table: str, results: str, *featu
 			print('y_hat', y_hat)
 		writeoutput(address, y_hat, hypothesis)
 	accuracy, precision, recall, fscore = generatestatistics(hypothesis, table)
-	write_statistics(source, accuracy, precision, recall, fscore, results)
+	write_statistics(source, accuracy, precision, recall, fscore, epochs, results)
 	write_hypothesis_analysis(hypothesis, table, results, network.attention_weights)
 
 def getword(i: int, source: str):
@@ -140,7 +140,7 @@ def load_wav_to_vec(model, xpath: str):
 	x = torch.stack(x).detach()
 	return x
 
-def write_statistics(source: str, accuracy: tuple, precision: float, recall: float, fscore: float, results: str):
+def write_statistics(source: str, accuracy: tuple, precision: float, recall: float, fscore: float, epochs: int, results: str):
 	'''
 	writes these statistics to the folder results under the model's name
 	'''
@@ -149,14 +149,14 @@ def write_statistics(source: str, accuracy: tuple, precision: float, recall: flo
 	source = os.path.split(source)[-1]
 	if path.exists():
 		with path.open(mode='a') as f:
-			line = f'{source}\t{accuracy}\t{precision}\t{recall}\t{fscore}\n'
+			line = f'{source}\t{epochs}\t{accuracy}\t{precision}\t{recall}\t{fscore}\n'
 			f.write(line)
 	else:
 		path.touch()
 		with path.open(mode='w') as f:
-			line = f'data\taccuracy\tprecision\trecall\tfscore\n'
+			line = f'data\tepochs\taccuracy\tprecision\trecall\tfscore\n'
 			f.write(line)
-			line = f'{source}\t{accuracy}\t{precision}\t{recall}\t{fscore}\n'
+			line = f'{source}\t{epochs}\t{accuracy}\t{precision}\t{recall}\t{fscore}\n'
 			f.write(line)
 
 def write_hypothesis_analysis(hypothesis: str, table: DataFrame, results: str, attention_weights: list):
@@ -308,10 +308,12 @@ def getrecall(source: str, syllabletarget: list):
 			if DEBUG:
 				print('claim is', claim, 'truth', true)
 			if true == [0,1]:
-				print('truth is counted')
+				if DEBUG:
+					print('truth is counted')
 				denominator +=1
 				if claim == true:
-					print('claim is correct')
+					if DEBUG:
+						print('claim is correct')
 					numerator +=1
 	syllablerecall = numerator / denominator
 	return round(syllablerecall, 3)
@@ -454,9 +456,10 @@ if __name__== '__main__':
 	parser.add_argument('hypothesis')
 	parser.add_argument('table')
 	parser.add_argument('results')
+	parser.add_argument('epochs')
 	parser.add_argument('features', nargs='*', default=None)
 	args = parser.parse_args()
 	network = load_model(args.model)
 
-	test(Path(args.source), network, Path(args.hypothesis), Path(args.table), Path(args.results), *[Path(i) for i in args.features])
+	test(Path(args.source), network, Path(args.hypothesis), Path(args.table), Path(args.results), args.epochs, *[Path(i) for i in args.features])
 

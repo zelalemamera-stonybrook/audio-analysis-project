@@ -30,7 +30,7 @@ def combine(table: str, target: str, *sources):
 			for word in combined:
 				syllable = torch.load(word[j])
 				if type(syllable) == float:
-					syllable = torch.tensor(syllable).reshape((1,))
+					syllable = torch.tensor(syllable).reshape((1,)) * 1000
 				combinedvector.append(syllable)
 			output.append(torch.cat(combinedvector))
 		for k in range(len(output)):

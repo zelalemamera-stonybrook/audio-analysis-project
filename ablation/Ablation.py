@@ -10,12 +10,13 @@ import pandas as pd
 import os
 
 
-def combine(table: str, target: str, omit: str,  *sources):
+def combine(table: str, target: str, omit1: str, omit2: str,  *sources):
 	'''
 	uses the index in the table to find each word in sources and combine it, then saves the result to target.
 	'''
 	table = pd.read_csv(table)
 	table = table.set_index('Unnamed: 0')
+	omit = [omit1, omit2]
 	for i in table.index:
 		output = []
 		combined = []
@@ -30,7 +31,7 @@ def combine(table: str, target: str, omit: str,  *sources):
 			for word in combined:
 				syllable = word[j]
 				prefix = os.path.split(syllable)[0]
-				if Path(prefix) == omit:
+				if Path(prefix) not in omit:
 					print('ommited', syllable)
 					syllable = torch.load(syllable)
 					if type(syllable) == float:
@@ -40,7 +41,7 @@ def combine(table: str, target: str, omit: str,  *sources):
 				else:
 					syllable = torch.load(syllable)
 					if type(syllable) == float:
-						syllable = torch.tensor(syllable).reshape((1,))
+						syllable = torch.tensor(syllable).reshape((1,)) * 1000
 				combinedvector.append(syllable)
 			output.append(torch.cat(combinedvector))
 		for k in range(len(output)):
@@ -65,7 +66,8 @@ if __name__ == '__main__':
 	parser.add_argument("table")
 	parser.add_argument("target")
 	parser.add_argument("source")
-	parser.add_argument("omit", default=None)
+	parser.add_argument("omit1", default=None)
+	parser.add_argument("omit2", default=None)
 	args = parser.parse_args()
 	sources = getfeaturelist(Path(args.source))
-	combine(Path(args.table), Path(args.target), Path(args.omit), *[Path(i) for i in sources])
+	combine(Path(args.table), Path(args.target), Path(args.omit1), Path(args.omit2), *[Path(i) for i in sources])

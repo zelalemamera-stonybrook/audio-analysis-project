@@ -15,16 +15,13 @@ def summarize(target: str, table: str):
 		targetstream = target.open(mode='a')
 	else:
 		targetstream = target.open(mode='w')
-		targetstream.write('data\tmean_precision\tmax_precision\tmean_recall\tmax_recall\tmean_f\tmax_f\n')
+		targetstream.write('data\tepochs\tprecision\trecall\tfscore\n')
 	table = pd.read_csv(table)
 	name = table['data'][0]
-	precision = table['precision']
-	meanp, maxp = round(float(precision.mean()), 4), round(float(precision.max()), 4)
-	sensitivity = table['recall']
-	means, maxs = round(float(sensitivity.mean()), 4), round(float(sensitivity.max()), 4)
 	fscore = table['fscore']
-	meanf, maxf = round(float(fscore.mean()), 4), round(float(fscore.max()), 4)
-	targetstream.write(f'{name}\t{meanp}\t{maxp}\t{means}\t{maxs}\t{meanf}\t{maxf}\n')
+	i = fscore.argmax()
+	epoch, precision, recall, fscore = table['epochs'][i], table['precision'][i], table['recall'][i], table['fscore'][i]
+	targetstream.write(f'{name}\t{epoch}\t{precision}\t{recall}\t{fscore}\n')
 
 
 

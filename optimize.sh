@@ -31,11 +31,14 @@ buildpraat ()
 }
 trainpraat ()
 {
+	python neural_network/TrainNetwork.py PraatModel data/train/Praat data/train/balanced.csv 99 results/PraatModel/errorlog.txt 25 -r
+	python neural_network/TestNetwork.py data/dev/Praat PraatModel results/PraatModel/hypothesis data/dev/table.csv results/PraatModel 0;
+
 	for ((i=0;i<$1;++i));
 		do
 		python neural_network/TrainNetwork.py PraatModel data/train/Praat data/train/balanced.csv 0.001 results/PraatModel/errorlog.txt 25
 
-		python neural_network/TestNetwork.py data/dev/Praat  PraatModel results/PraatModel/hypothesis data/dev/table.csv results/PraatModel;
+		python neural_network/TestNetwork.py data/dev/Praat  PraatModel results/PraatModel/hypothesis data/dev/table.csv results/PraatModel $i;
 		done
 	echo -e '\a'
 }
@@ -50,17 +53,7 @@ reset ()
 
 }
 
-#reset Wav2vec+PraatModel
-
-for((j=0;j<50;++j));
-	do
-	train Raw+PraatModel 1
-	test Raw+PraatModel dev
-	echo round $j;
-	done
-echo -e '\a'
-
 
 #buildpraat
-#reset PraatModel
-#trainpraat 100
+reset PraatModel
+trainpraat 100
