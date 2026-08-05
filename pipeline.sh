@@ -119,9 +119,4 @@ normalize ()
 		done
 }
 
-#align
-#syllabify
-featurize
-split
-balance
-normalize
+align&syllabify&featurize&split&balance&normalize
