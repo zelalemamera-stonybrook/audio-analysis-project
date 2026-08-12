@@ -5,9 +5,10 @@
 train ()
 {
 	# trains the neural network where its name is specified by the first argument. A second argument specifies the number of runs to make.
+	python neural_network/TrainNetwork.py $1 data/train/Raw data/train/balanced.csv 0.001 results/$1/errorlog.txt 25 -r
 	for((i=0;i<$2;++i));
 		do
-		python neural_network/TrainNetwork.py $1 data/train/Raw data/train/balanced.csv 0.001 results/$1/errorlog.txt 25 -a data/train/{Dur,F{0,1,2,3,4,5}norm,Intensitynorm};
+		python neural_network/TrainNetwork.py $1 data/train/Raw data/train/balanced.csv 0.001 results/$1/errorlog.txt 25;
 		done
 }
 
@@ -31,14 +32,18 @@ buildpraat ()
 }
 trainpraat ()
 {
-	python neural_network/TrainNetwork.py PraatModel data/train/Praat data/train/balanced.csv 99 results/PraatModel/errorlog.txt 25 -r
-	python neural_network/TestNetwork.py data/dev/Praat PraatModel results/PraatModel/hypothesis data/dev/table.csv results/PraatModel 0;
+	python neural_network/TrainNetwork.py PraatModel data/train/Praat data/train/balanced.csv 99 results/PraatModel/errorlog.txt 25 -r -a data/train/{Dur,F{0,1,2,3,4,5}norm,Intensitynorm}
+	python neural_network/TestNetwork.py data/dev/Praat PraatModel results/PraatModel/hypothesis data/dev/table.csv results/PraatModel 0 data/dev/{Dur,F{0,1,2,3,4,5}norm,Intensitynorm}
+	rm -r initial
+	mkdir initial
+	mv results/PraatModel/* initial
 
 	for ((i=0;i<$1;++i));
 		do
-		python neural_network/TrainNetwork.py PraatModel data/train/Praat data/train/balanced.csv 0.001 results/PraatModel/errorlog.txt 25
+		python neural_network/TrainNetwork.py PraatModel data/train/Praat data/train/balanced.csv 0.001 results/PraatModel/errorlog.txt 25 data/train/{Dur,F{0,1,2,3,4,5}norm,Intensitynorm}
 
-		python neural_network/TestNetwork.py data/dev/Praat  PraatModel results/PraatModel/hypothesis data/dev/table.csv results/PraatModel $i;
+		python neural_network/TestNetwork.py data/dev/Praat  PraatModel results/PraatModel/hypothesis data/dev/table.csv results/PraatModel $i data/dev/{Dur,F{0,1,2,3,4,5}norm,Intensitynorm}
+		reset PraatModel $i;
 		done
 	echo -e '\a'
 }
@@ -46,14 +51,15 @@ trainpraat ()
 reset ()
 {
 	# helper code that resets the training session for a model so that it can be retrained
-
-	rm -r results/$1/previous_session
-	mkdir results/$1/previous_session
-	mv results/$1/{errorlog,hypothesis_anaylsis,statistics}.txt results/$1/previous_session
+	rm -r results/$1/"session"$2
+	mkdir results/$1/"session"$2
+	cp results/$1/{errorlog.txt,hypothesis_analysis.txt,statistics.txt} results/$1/"session"$2
+	mkdir results/$1/"session"$2/hypothesis
+	cp results/$1/hypothesis/* results/$1/"session"$2/hypothesis
 
 }
 
 
-#buildpraat
-reset PraatModel
+buildpraat
 trainpraat 100
+#train BaselineModel 100

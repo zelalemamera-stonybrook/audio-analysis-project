@@ -47,15 +47,15 @@ class Network(nn.Module):
 		self.conv6.weight.data = nn.init.uniform_(self.conv6.weight.data, -0.5 * 4, 0.5 * 4, g_cpu.manual_seed(seed))
 		self.conv6.bias.data = nn.init.uniform_(self.conv6.bias.data, -0.5 * 4, 0.5 * 4, g_cpu.manual_seed(seed))
 
-		'''
-		self.attnlayer1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500, 2000 + 165)),  - 0.5, 0.5))
-		self.attnlayer1_bias = nn.parameter.Parameter(torch.rand((500)) - 0.5)
-		self.attnlayer2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100, 500) ), - 0.5, 0.5))
-		self.attnlayer2_bias = nn.parameter.Parameter(torch.rand((100) ) - 0.5)
-		self.attnlayer3 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1,100)), - 0.5 * 1.5, 0.5 * 1.5))
-		self.attnlayer3_bias = nn.parameter.Parameter(torch.rand((1,)) - 0.5)
-		'''
-		self.attention_weights = None
+
+		self.attnlayer1 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500, 2000 + 165)),  - 0.5, 0.5, g_cpu.manual_seed(seed)))
+		self.attnlayer1_bias = nn.parameter.Parameter(nn.init.uniform_(torch.empty((500)), - 0.5, 0.5, g_cpu.manual_seed(seed)))
+		self.attnlayer2 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100, 500) ), - 0.5, 0.5, g_cpu.manual_seed(seed)))
+		self.attnlayer2_bias = nn.parameter.Parameter(nn.init.uniform_(torch.empty((100) ), - 0.5, 0.5, g_cpu.manual_seed(seed)))
+		self.attnlayer3 = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1,100)), - 0.5 * 1.5, 0.5 * 1.5, g_cpu.manual_seed(seed)))
+		self.attnlayer3_bias = nn.parameter.Parameter(nn.init.uniform_(torch.empty((1,)), - 0.5, 0.5, g_cpu.manual_seed(seed)))
+
+		self.attention_weights = []
 
 		self.recurrent_left_in = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300, 58) ),  - 0.5, 0.5, g_cpu.manual_seed(seed)))
 		self.recurrent_left_in_bias = nn.parameter.Parameter(nn.init.uniform_(torch.empty((300) ), 0, 1, g_cpu.manual_seed(seed)))
@@ -162,16 +162,19 @@ class Network(nn.Module):
 		input shape: (400) + (30) * 4
 		output shape: (400)
 		'''
-		#print('starting attention network')
+		if DEBUG:
+			print('starting attention network')
 		weight_list = []
-		#print('compatibility is computed over', feature_vecs.shape)
+		if DEBUG:
+			print('compatibility is computed over', feature_vecs.shape)
 		for attention_target in feature_vecs:
 			weight_list.append(self.attention_forward(hidden, attention_target))
 		weight_tensor = torch.stack(weight_list).reshape(-1)
 		attention_vector = self.softmax(weight_tensor)
 		print(attention_vector)
 		weighted = torch.matmul(attention_vector, feature_vecs)
-		#print(weighted.shape, torch.min(weighted).item(), torch.max(weighted).item(), torch.mean(weighted).item())
+		if DEBUG:
+			print(weighted.shape, torch.min(weighted).item(), torch.max(weighted).item(), torch.mean(weighted).item())
 		output = torch.cat((hidden, weighted))
 		return attention_vector, output
 
@@ -183,15 +186,20 @@ class Network(nn.Module):
 		input shape: (400 + 30)
 		output shape: (1)
 		'''
-		#print('attention forward begins')
+		if DEBUG:
+			print('attention forward begins')
 		input = torch.cat((attention_source, attention_target))
-		#print(input.shape, torch.min(input).item(), torch.max(input).item(), torch.mean(input).item())
+		if DEBUG:
+			print(input.shape, torch.min(input).item(), torch.max(input).item(), torch.mean(input).item())
 		first_layer = self.sigmoid(torch.matmul( self.attnlayer1, input ) + self.attnlayer1_bias)
-		#print(first_layer.shape, torch.min(first_layer).item(), torch.max(first_layer).item(), torch.mean(first_layer).item())
+		if DEBUG:
+			print(first_layer.shape, torch.min(first_layer).item(), torch.max(first_layer).item(), torch.mean(first_layer).item())
 		second_layer = self.sigmoid(torch.matmul(self.attnlayer2, first_layer ) + self.attnlayer2_bias)
-		#print(second_layer.shape, torch.min(second_layer).item(), torch.max(second_layer).item(), torch.mean(second_layer).item())
+		if DEBUG:
+			print(second_layer.shape, torch.min(second_layer).item(), torch.max(second_layer).item(), torch.mean(second_layer).item())
 		third_layer = torch.matmul(self.attnlayer3, second_layer ) + self.attnlayer3_bias
-		#print(third_layer)
+		if DEBUG:
+			print(third_layer)
 		return third_layer
 
 	def rnn_forward(self, injected_list: Tensor, features = None):
@@ -268,6 +276,5 @@ class Network(nn.Module):
 			fourth_layer = self.softmax(torch.matmul(self.recurrent_out4, third_layer) + self.recurrent_out4_bias)
 			output_list.append(fourth_layer)
 		if features:
-			self.attention_weights = []
 			self.attention_weights.append(attention_list)
 		return torch.stack(output_list)

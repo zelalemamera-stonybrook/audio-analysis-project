@@ -39,12 +39,12 @@ class Network(nn.Module):
 		self.conv6.weight.data = nn.init.uniform_(self.conv6.weight.data, -0.5 * 4, 0.5 * 4)
 
 
-		self.left_rnn_in = nn.parameter.Parameter(torch.rand((500,323)) - 0.5)
+		self.left_rnn_in = nn.parameter.Parameter(torch.rand((500,314)) - 0.5)
 		self.left_rnn_in_bias = nn.parameter.Parameter(torch.rand((500,))- 0.5)
 		self.left_rnn_hidden = nn.parameter.Parameter(torch.rand((500,500))-0.5)
 		self.left_rnn_hidden_bias = nn.parameter.Parameter(torch.rand((500,))-0.5)
 
-		self.right_rnn_in = nn.parameter.Parameter(torch.rand((500,323))-0.5)
+		self.right_rnn_in = nn.parameter.Parameter(torch.rand((500,314))-0.5)
 		self.right_rnn_in_bias = nn.parameter.Parameter(torch.rand((500,))-0.5)
 		self.right_rnn_hidden = nn.parameter.Parameter(torch.rand((500,500))-0.5)
 		self.right_rnn_hidden_bias = nn.parameter.Parameter(torch.rand((500,))-0.5)
